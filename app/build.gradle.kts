@@ -54,6 +54,8 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.fragment.ktx)
 //    implementation(libs.material.v150)
 //    implementation(libs.org.jetbrains.kotlin.plugin.parcelize.gradle.plugin)
 }
