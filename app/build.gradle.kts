@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("kotlin-parcelize")
+    id("com.google.devtools.ksp")
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -56,6 +58,8 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.fragment.ktx)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler)
 //    implementation(libs.material.v150)
 //    implementation(libs.org.jetbrains.kotlin.plugin.parcelize.gradle.plugin)
 }

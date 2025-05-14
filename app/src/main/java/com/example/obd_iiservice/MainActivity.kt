@@ -1,11 +1,8 @@
 package com.example.obd_iiservice
 
 import android.Manifest
-import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothSocket
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -16,7 +13,6 @@ import android.os.Build.VERSION
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,20 +24,22 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.obd_iiservice.databinding.ActivityMainBinding
-import java.io.BufferedReader
-import java.io.IOException
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
-import java.util.UUID
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private lateinit var binding : ActivityMainBinding
-    private lateinit var bluetoothAdapter: BluetoothAdapter
     private lateinit var bluetoothDeviceAdapter: BluetoothDeviceAdapter
     private lateinit var rvBluetooth: RecyclerView
     private val listBluetoothDevice = mutableListOf<BluetoothDeviceItem>()
     private val bluetoothViewModel : BluetoothViewModel by viewModels()
 
+    @Inject
+    lateinit var bluetoothAdapter: BluetoothAdapter
+
+    @Inject
+    lateinit var OBDRepositoryImpl: OBDRepositoryImpl
 
     private val REQUEST_PERMISSION = 2
     private val PERMISSION_REQUEST_BLUETOOTH = 1
@@ -52,12 +50,43 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(binding.root)
 
-        val btnScan = binding.btnScan
         rvBluetooth = binding.rvListDevices
         rvBluetooth.setHasFixedSize(true)
         showRecycleView()
 
+//        val bluetoothManager = this.getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+//        bluetoothAdapter = bluetoothManager.adapter
+        if (bluetoothAdapter == null) {
+            Toast.makeText(this, "Not supported Bluetooth", Toast.LENGTH_LONG).show()
+            finish()
+        }
 
+        initUI()
+        observerViewModel()
+    }
+
+    private fun initUI() {
+//        val btnScan = binding.btnScan
+        rvBluetooth = binding.rvListDevices
+        rvBluetooth.setHasFixedSize(true)
+        showRecycleView()
+
+        binding.btnScan.setOnClickListener {
+            checkAndRequestPermissions()
+        }
+
+        binding.btnDisconnect.setOnClickListener {
+            bluetoothViewModel.disconnect()
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
+        }
+    }
+
+    private fun observerViewModel(){
         bluetoothViewModel.isConnected.observe(this) { connected ->
             if (connected){
                 binding.btnScan.visibility = View.GONE
@@ -70,27 +99,6 @@ class MainActivity : AppCompatActivity() {
                 binding.rvListDevices.visibility = View.VISIBLE
                 binding.llDashboard.visibility = View.GONE
             }
-        }
-
-        val bluetoothManager = this.getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothAdapter = bluetoothManager.adapter
-        if (bluetoothAdapter == null) {
-            Toast.makeText(this, "Not supported Bluetooth", Toast.LENGTH_LONG).show()
-            finish()
-        }
-
-        btnScan.setOnClickListener {
-            checkAndRequestPermissions()
-        }
-
-        binding.btnDisconnect.setOnClickListener {
-            bluetoothViewModel.disconnect()
-        }
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
         }
     }
 
@@ -185,10 +193,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun connectToDevice(address: String) {
-        val device = bluetoothAdapter.getRemoteDevice(address)
-        device.uuids?.forEach {
-            Log.d("Bluetooth", "Device UUID: ${it.uuid}")
-        }
+//        val device = bluetoothAdapter.getRemoteDevice(address)
+//        device.uuids?.forEach {
+//            Log.d("Bluetooth", "Device UUID: ${it.uuid}")
+//        }
 
         // UUID default untuk SPP (Serial Port Profile)
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED){
@@ -197,33 +205,19 @@ class MainActivity : AppCompatActivity() {
             }
             return
         }
-        val uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
-        Thread {
-            try {
-                val socket = device.createRfcommSocketToServiceRecord(uuid)
-                bluetoothAdapter.cancelDiscovery() // sangat penting!
-                socket?.connect()
-                bluetoothViewModel.bluetoothSocket = socket
-                runOnUiThread {
-                    binding.tvStatusBluetooth.text = device.name
-                    Toast.makeText(this, "Connected to ${device.name}", Toast.LENGTH_SHORT).show()
-                }
-
+        bluetoothViewModel.connectToDevice(
+            address = address,
+            onSuccess = {
+                val device = bluetoothViewModel.bluetoothSocket?.remoteDevice
+                binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
+                Toast.makeText(this, "Connected to ${device?.name}", Toast.LENGTH_SHORT).show()
                 testObdConnection()
-
-            } catch (e: IOException) {
-                e.printStackTrace()
-                bluetoothViewModel.bluetoothSocket = null
-                runOnUiThread {
-                    Toast.makeText(
-                        this,
-                        "Failed to connect to ${device.name}: ${e.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                    Log.e("Bluetooth", "Connection failed: ${e.message}", e)
-                }
+            },
+            onError = { error ->
+                Toast.makeText(this, "Connection failed: $error", Toast.LENGTH_LONG).show()
+                Log.e("Bluetooth", "Connection failed: $error")
             }
-        }.start()
+        )
     }
 
     private fun testObdConnection() {
@@ -246,6 +240,13 @@ class MainActivity : AppCompatActivity() {
                 var throttle = 0
                 var temp = 0
                 var maf = 0.0
+                var data : Map<String, String> = mapOf(
+                    "RPM" to "",
+                    "Speed" to "",
+                    "Throttle" to "",
+                    "Temp" to "",
+                    "MAF" to "",
+                )
 
                 // Inisialisasi (sama seperti sebelumnya)
                 val initCmds = listOf("ATZ", "ATE0", "ATL0", "ATH0")
