@@ -3,28 +3,58 @@ package com.example.obd_iiservice
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.media.SoundPool
 import android.os.Build
 import android.os.Build.VERSION
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.asFlow
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.obd_iiservice.bluetooth.BluetoothDeviceAdapter
+import com.example.obd_iiservice.bluetooth.BluetoothDeviceItem
+import com.example.obd_iiservice.bluetooth.BluetoothViewModel
+import com.example.obd_iiservice.bluetooth.ObserveConnectionBluetooth
 import com.example.obd_iiservice.databinding.ActivityMainBinding
+import com.example.obd_iiservice.helper.makeToast
+import com.example.obd_iiservice.helper.saveLogToFile
+import com.example.obd_iiservice.log.LogViewActivity
+import com.example.obd_iiservice.obd.OBDForegroundService
+import com.example.obd_iiservice.obd.OBDViewModel
+import com.example.obd_iiservice.setting.SettingActivity
+import com.example.obd_iiservice.setting.SettingViewModel
+import com.example.obd_iiservice.threshold.ThresholdActivity
+import com.example.obd_iiservice.threshold.ThresholdViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -34,12 +64,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rvBluetooth: RecyclerView
     private val listBluetoothDevice = mutableListOf<BluetoothDeviceItem>()
     private val bluetoothViewModel : BluetoothViewModel by viewModels()
+    private val obdViewModel : OBDViewModel by viewModels()
+    private val settingViewModel: SettingViewModel by viewModels()
+    private val mainViewModel : MainViewModel by viewModels()
+    private val thresholdViewModel : ThresholdViewModel by viewModels()
 
     @Inject
     lateinit var bluetoothAdapter: BluetoothAdapter
 
-    @Inject
-    lateinit var OBDRepositoryImpl: OBDRepositoryImpl
 
     private val REQUEST_PERMISSION = 2
     private val PERMISSION_REQUEST_BLUETOOTH = 1
@@ -54,8 +86,33 @@ class MainActivity : AppCompatActivity() {
         rvBluetooth.setHasFixedSize(true)
         showRecycleView()
 
-//        val bluetoothManager = this.getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
-//        bluetoothAdapter = bluetoothManager.adapter
+//        serviceIntent = obdViewModel.serviceIntent.value
+
+        onBackPressedDispatcher.addCallback(object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+//                Toast.makeText(this@MainActivity, "menenak tombol kembali", Toast.LENGTH_LONG).show()
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Keluar")
+                    .setMessage("Apakah anda ingin keluar dari aplikasi?")
+                    .setPositiveButton("Ya") { _,_ ->
+                        obdViewModel.stopReading()
+                        lifecycleScope.launch {
+//                            if (bluetoothViewModel.isReceiverRegistered.first() == true){
+//                                unregisterReceiver(receiver)
+//                            }
+                            unRegReceiver()
+                        }
+                        bluetoothViewModel.disconnect()
+                        finish()
+                    }
+                    .setNegativeButton("Tidak") { dialog, _ -> dialog.dismiss() }
+                    .create()
+                    .show()
+            }
+        })
+
+        val bluetoothManager = this.getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+        bluetoothAdapter = bluetoothManager.adapter
         if (bluetoothAdapter == null) {
             Toast.makeText(this, "Not supported Bluetooth", Toast.LENGTH_LONG).show()
             finish()
@@ -66,17 +123,70 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initUI() {
-//        val btnScan = binding.btnScan
         rvBluetooth = binding.rvListDevices
         rvBluetooth.setHasFixedSize(true)
         showRecycleView()
 
-        binding.btnScan.setOnClickListener {
+        binding.btnScanIfAutoReconFalse.setOnClickListener {
             checkAndRequestPermissions()
         }
 
-        binding.btnDisconnect.setOnClickListener {
-            bluetoothViewModel.disconnect()
+        binding.btnScanIfAutoReconTrue.setOnClickListener {
+            checkAndRequestPermissions()
+        }
+
+        binding.btnConnectIfAutoReconFalse.setOnClickListener {
+            lifecycleScope.launch {
+                settingViewModel.isInitialized
+                    .filter { it } // hanya lanjut kalau true
+                    .first()
+                val canConnect = settingViewModel.checkDataForConnecting()
+                val address = settingViewModel.bluetoothAddress.first()
+                val topic = settingViewModel.mqttTopic.first()
+                val port = settingViewModel.mqttPort.first()
+                val host = settingViewModel.mqttHost.first()
+//                makeToast(this@MainActivity, "top : $topic, p: $port, ho: $host, adress : $address")
+                if (!bluetoothAdapter.isEnabled) {
+                    val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                    enableBluetoothLauncher.launch(enableBtIntent)
+                } else {
+                    if (canConnect && address != null){
+                        connectToDevice(address)
+                    } else {
+                        makeToast(this@MainActivity, "topic atau port tidak boleh kosong")
+                    }
+                }
+            }
+        }
+
+        binding.btnDisconnectIfAutoReconFalse.setOnClickListener {
+            disconnectOrClose()
+        }
+
+        binding.topAppBar.setOnMenuItemClickListener { menuItem ->
+            when(menuItem.itemId) {
+                R.id.nav_settings -> {
+                    val intent = Intent(this, SettingActivity::class.java)
+                    startActivity(intent)
+                    true
+                }
+                R.id.nav_log -> {
+                    val intent = Intent(this, LogViewActivity::class.java)
+                    startActivity(intent)
+                    true
+                }
+                R.id.nav_treshold -> {
+                    val intent = Intent(this, ThresholdActivity::class.java)
+                    startActivity(intent)
+                    true
+                }
+                R.id.nav_quit -> {
+                    disconnectOrClose()
+                    finish()
+                    true
+                }
+                else -> false
+            }
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -86,21 +196,180 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+
     private fun observerViewModel(){
-        bluetoothViewModel.isConnected.observe(this) { connected ->
-            if (connected){
-                binding.btnScan.visibility = View.GONE
-                binding.btnDisconnect.visibility = View.VISIBLE
-                binding.rvListDevices.visibility = View.GONE
-                binding.llDashboard.visibility = View.VISIBLE
-            } else {
-                binding.btnScan.visibility = View.VISIBLE
-                binding.btnDisconnect.visibility = View.GONE
-                binding.rvListDevices.visibility = View.VISIBLE
-                binding.llDashboard.visibility = View.GONE
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+
+                launch {
+                    settingViewModel.mqttAutoRecon.collect { isAuto ->
+                        if (isAuto){
+                            binding.clContainerButtonIfAutoReconTrue.visibility = View.VISIBLE
+                            binding.clContainerButtonIfAutoReconFalse.visibility = View.GONE
+                        } else {
+                            binding.clContainerButtonIfAutoReconTrue.visibility = View.GONE
+                            binding.clContainerButtonIfAutoReconFalse.visibility = View.VISIBLE
+                        }
+                    }
+                }
+
+                launch {
+                    bluetoothViewModel.bluetoothSocket.collect {
+                        if (it != null && it.isConnected == false){
+                            disconnectOrClose()
+                        }
+                    }
+                }
+
+                launch {
+                    repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        combine(
+                            obdViewModel.obdData,
+                            thresholdViewModel.thresholdData
+                        ) { data, threshold ->
+                            Pair(data, threshold)
+                        }.collect { (data, threshold) ->
+
+                            val rpm = data["Rpm"]?.toIntOrNull()
+                            val speed = data["Speed"]?.toIntOrNull()
+                            val throttle = data["Throttle"]?.toIntOrNull()
+                            val temp = data["Temp"]?.toIntOrNull()
+                            val maf = data["Maf"]?.toDoubleOrNull()
+
+                            binding.tvDataRpm.text = rpm?.toString() ?: "-"
+                            binding.tvDataSpeed.text = speed?.toString() ?: "-"
+                            binding.tvDataThrottle.text = throttle?.toString() ?: "-"
+                            binding.tvDataTemp.text = temp?.toString() ?: "-"
+                            binding.tvDataMaf.text = maf?.toString() ?: "-"
+
+                            val exceeded = listOfNotNull(
+                                rpm?.takeIf { it > threshold.rpm },
+                                speed?.takeIf { it > threshold.speed },
+                                throttle?.takeIf { it > threshold.throttle },
+                                temp?.takeIf { it > threshold.temp },
+                                maf?.takeIf { it > threshold.maf }
+                            ).isNotEmpty()
+
+                            val isPlaying = mainViewModel.isPlaying.first()
+
+                            if (exceeded && !isPlaying) {
+                                val streamId = mainViewModel.soundPool.play(
+                                    mainViewModel.beepSoundId, 1f, 1f, 0, -1, 1f
+                                )
+                                mainViewModel.updateCurrentStreamId(streamId)
+                                mainViewModel.updateIsPlaying(true)
+                            } else if (!exceeded && isPlaying) {
+//                                mainViewModel.currentStreamId.firstOrNull()?.let {
+//                                    mainViewModel.soundPool.stop(it)
+//                                }
+                                mainViewModel.currentStreamId.firstOrNull()?.let {
+                                    mainViewModel.soundPool.stop(it)
+                                }
+                                mainViewModel.updateCurrentStreamId(null)
+                                mainViewModel.updateIsPlaying(false)
+                            }
+                        }
+                    }
+                }
+
+                launch {
+                    combine(
+                        settingViewModel.bluetoothAddress,
+                        bluetoothViewModel.isConnected,
+                        settingViewModel.mqttAutoRecon,
+                        bluetoothViewModel.reconnectingJob
+                    ) { address, isConnected, isAuto, reconnectingJob ->
+                        // Combine jadi Quadruple
+                        ObserveConnectionBluetooth(address, isConnected, isAuto, reconnectingJob)
+                    }.collect { (address, isConnected, isAuto, reconnectingJob) ->
+                        if (address != null && !isConnected && isAuto) {
+                            if (reconnectingJob?.isActive != true && settingViewModel.checkDataForConnecting()) {
+                                makeToast(this@MainActivity, "recon")
+                                bluetoothViewModel.updateReconnecingJob(reconnectUntilSuccess(address))
+                            } else if (settingViewModel.checkDataForConnecting() == false){
+                                makeToast(this@MainActivity, "topic atau port tidak boleh kosong")
+                                saveLogToFile(
+                                    this@MainActivity,
+                                    "reconnect",
+                                    "ERROR",
+                                    "Topic atau port tidak boleh kosong"
+                                )
+                                delay(1000)
+                            } else {
+                                makeToast(this@MainActivity, "error saat akan reconnecting otomatis")
+                                saveLogToFile(
+                                    this@MainActivity,
+                                    "reconnect",
+                                    "ERROR",
+                                    "error saat akan reconnecting otomatis")
+                            }
+                        }
+
+                        // Pengecekan untuk disconnect jika address == null atau isAuto berubah
+                        val addressChangedToNull = bluetoothViewModel.previousAddress.first() != address && address == null
+                        val isAutoChanged = bluetoothViewModel.previousIsAuto.first() != isAuto
+
+                        if ((addressChangedToNull || isAutoChanged) && (address == null || !isAuto)) {
+                            makeToast(this@MainActivity, "disconnect when address == null or isAuto == false")
+                            disconnectOrClose()
+                        }
+
+                        // Simpan nilai saat ini sebagai nilai sebelumnya
+//                        previousAddress = address
+//                        previousIsAuto = isAuto
+                        address?.let { bluetoothViewModel.updatePreviousAdrress(it) }
+                        isAuto.let { bluetoothViewModel.updatePreviousIsAuto(it) }
+
+                        address?.let { binding.tvAddressBluetooth.text = it } ?: "-"
+                        // Update UI
+                        //jika address tidak ada dan terputus (kondisi awal)
+                        if (address == null && !isConnected){
+                            makeToast(this@MainActivity, "address tidak ada dan terputus")
+                            binding.rvListDevices.visibility = View.VISIBLE
+                            binding.llDashboard.visibility = View.GONE
+                            binding.btnScanIfAutoReconTrue.visibility = View.VISIBLE
+                            binding.btnScanIfAutoReconFalse.visibility = View.VISIBLE
+                            binding.rvListDevices.visibility = View.VISIBLE
+                            binding.btnConnectIfAutoReconFalse.visibility = View.GONE
+                        }
+                        //jika address ada dan terhubung
+                        else if (address != null && isConnected) {
+                            makeToast(this@MainActivity, "address ada dan terhubung")
+                            if (isAuto){
+//                                binding.btnScanIfAutoReconFalse.visibility = View.GONE
+//                                binding.btnDisconnectIfAutoReconFalse.visibility = View.VISIBLE
+                                binding.btnConnectIfAutoReconTrue.visibility = View.VISIBLE
+                            } else {
+                                binding.btnDisconnectIfAutoReconFalse.visibility = View.VISIBLE
+
+                            }
+                            binding.btnScanIfAutoReconFalse.visibility = View.GONE
+                            binding.btnScanIfAutoReconTrue.visibility = View.GONE
+                            binding.rvListDevices.visibility = View.GONE
+                            binding.btnConnectIfAutoReconFalse.visibility = View.GONE
+                            binding.rvListDevices.visibility = View.GONE
+                            binding.llDashboard.visibility = View.VISIBLE
+                        }
+                        //jika address ada namun terputus
+                        else if (address != null && !isConnected){
+                            makeToast(this@MainActivity, "address ada namun terputus")
+
+                            if (!isAuto){
+                                binding.btnConnectIfAutoReconFalse.visibility = View.VISIBLE
+                                binding.btnDisconnectIfAutoReconFalse.visibility = View.GONE
+                            }
+                            binding.rvListDevices.visibility = View.GONE
+                            binding.llDashboard.visibility = View.GONE
+//                            binding.rvListDevices.visibility = View.VISIBLE
+//                            binding.llDashboard.visibility = View.GONE
+                        }
+                    }
+                }
             }
         }
     }
+
 
     private val enableBluetoothLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         if (res.resultCode == RESULT_OK) {
@@ -116,8 +385,15 @@ class MainActivity : AppCompatActivity() {
         bluetoothDeviceAdapter = BluetoothDeviceAdapter(
             listBluetoothDevice,
             object : BluetoothDeviceAdapter.OnDeviceConnectListener {
-                override fun onConnect(address: String) {
-                    connectToDevice(address)
+//                override fun onConnect(address: String) {
+//                    connectToDevice(address)
+//                }
+
+                override fun onSaveBluetoothDevice(address: String) {
+//                    bluetoothViewModel
+                    lifecycleScope.launch {
+                        settingViewModel.saveBluetoothAddress(address)
+                    }
                 }
             }
         )
@@ -174,10 +450,17 @@ class MainActivity : AppCompatActivity() {
     private fun startDiscovery(){
         val filter = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)
+            addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
             addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED)
             addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
         }
-        registerReceiver(receiver, filter)
+
+        lifecycleScope.launch {
+            if (bluetoothViewModel.isReceiverRegistered.first() == false) {
+                registerReceiver(receiver, filter)
+                bluetoothViewModel.changeIsReceiverRegistered(true)
+            }
+        }
 
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_PERMISSION)
@@ -193,11 +476,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun connectToDevice(address: String) {
-//        val device = bluetoothAdapter.getRemoteDevice(address)
-//        device.uuids?.forEach {
-//            Log.d("Bluetooth", "Device UUID: ${it.uuid}")
-//        }
-
         // UUID default untuk SPP (Serial Port Profile)
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED){
             if (VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -208,142 +486,184 @@ class MainActivity : AppCompatActivity() {
         bluetoothViewModel.connectToDevice(
             address = address,
             onSuccess = {
-                val device = bluetoothViewModel.bluetoothSocket?.remoteDevice
+                val device = bluetoothViewModel.bluetoothSocket.value?.remoteDevice
                 binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
+                lifecycleScope.launch {
+                    settingViewModel.saveBluetoothAddress(address)
+                    obdViewModel.updateBluetoothConnection(true)
+                }
                 Toast.makeText(this, "Connected to ${device?.name}", Toast.LENGTH_SHORT).show()
+                saveLogToFile(this, "Connect Bluetooth", "OK", "Connected to ${device?.name}")
                 testObdConnection()
             },
             onError = { error ->
                 Toast.makeText(this, "Connection failed: $error", Toast.LENGTH_LONG).show()
+                saveLogToFile(this, "Connect Bluetooth", "ERROR", "Connection failed: $error")
                 Log.e("Bluetooth", "Connection failed: $error")
             }
         )
     }
 
-    private fun testObdConnection() {
 
-        val pidList = listOf(
-            "010C", // RPM
-            "010D", // Speed
-            "0111", // Throttle
-            "0105", // Coolant Temp
-            "0110"  // MAF
-        )
-
-        Thread {
-            try {
-                val output = bluetoothViewModel.bluetoothSocket?.outputStream
-                val input = bluetoothViewModel.bluetoothSocket?.inputStream
-                val buffer = ByteArray(1024)
-                var rpm = 0
-                var speed = 0
-                var throttle = 0
-                var temp = 0
-                var maf = 0.0
-                var data : Map<String, String> = mapOf(
-                    "RPM" to "",
-                    "Speed" to "",
-                    "Throttle" to "",
-                    "Temp" to "",
-                    "MAF" to "",
-                )
-
-                // Inisialisasi (sama seperti sebelumnya)
-                val initCmds = listOf("ATZ", "ATE0", "ATL0", "ATH0")
-                for (cmd in initCmds) {
-                    if (output != null && input != null) {
-                        output.write((cmd + "\r").toByteArray())
-                        output.flush()
-                        Thread.sleep(300)
-                        input.read(buffer)
-                    }
-                }
-
-                while (output != null && input != null) {
-                    for (pid in pidList) {
-                        output.write((pid + "\r").toByteArray())
-                        output.flush()
-                        Thread.sleep(300)
-
-                        val bytesRead = input.read(buffer)
-                        if (bytesRead > 0) {
-                            val response = String(buffer, 0, bytesRead).replace("\r", "").replace("\n", "")
-                            Log.d("OBD", "Response for $pid: $response")
-
-                            when (pid) {
-                                "010C" -> Regex("41 0C ([0-9A-Fa-f]{2}) ([0-9A-Fa-f]{2})").find(response)?.let {
-                                    rpm = ((it.groupValues[1].toInt(16) * 256) + it.groupValues[2].toInt(16)) / 4
-                                    Log.d("OBD", "RPM: $rpm")
-
-                                }
-                                "010D" -> Regex("41 0D ([0-9A-Fa-f]{2})").find(response)?.let {
-                                    speed = it.groupValues[1].toInt(16)
-                                    Log.d("OBD", "Speed: $speed km/h")
-                                }
-                                "0111" -> Regex("41 11 ([0-9A-Fa-f]{2})").find(response)?.let {
-                                    throttle = (it.groupValues[1].toInt(16) * 100) / 255
-                                    Log.d("OBD", "Throttle: $throttle%")
-                                }
-                                "0105" -> Regex("41 05 ([0-9A-Fa-f]{2})").find(response)?.let {
-                                    temp = it.groupValues[1].toInt(16) - 40
-                                    Log.d("OBD", "Coolant Temp: $temp°C")
-                                }
-                                "0110" -> Regex("41 10 ([0-9A-Fa-f]{2}) ([0-9A-Fa-f]{2})").find(response)?.let {
-                                    maf = ((it.groupValues[1].toInt(16) * 256) + it.groupValues[2].toInt(16)) / 100.0
-                                    Log.d("OBD", "MAF: $maf g/s")
-                                }
-                            }
-                            runOnUiThread {
-                                binding.tvDataRpm.text = "$rpm"
-                                binding.tvDataSpeed.text = "$speed"
-                                binding.tvDataThrottle.text = "$throttle"
-                                binding.tvDataTemp.text = "$temp"
-                                binding.tvDataMaf.text = "$maf"
-                            }
-                        }
-                    }
-                    Thread.sleep(500) // delay antar loop
-                }
-            } catch (e: Exception) {
-                Log.e("OBD", "Error reading PIDs", e)
-                Log.e("Bluetooth", "Connection failed", e)
-                bluetoothViewModel.disconnect()
+    private fun reconnectUntilSuccess(address: String): Job? {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_CONNECT), REQUEST_PERMISSION)
             }
-        }.start()
+            return null
+        }
+
+        return lifecycleScope.launch {
+            var attempt = 0
+//            val maxAttempts = 5
+            while (bluetoothViewModel.isConnected.value == false) {
+                Log.d("Bluetooth", "Attempt reconnect: $attempt")
+
+                val success = bluetoothViewModel.connectToDeviceSuspend(address)
+
+                if (success) {
+                    val device = bluetoothViewModel.bluetoothSocket.value?.remoteDevice
+                    binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
+                    Toast.makeText(this@MainActivity, "Connected to ${device?.name}", Toast.LENGTH_SHORT).show()
+                    saveLogToFile(
+                        this@MainActivity,
+                        "Connect Bluetooth",
+                        "OK",
+                        "Reconnected to ${device?.name}"
+                    )
+                    testObdConnection()
+                    obdViewModel.updateBluetoothConnection(true)
+                    break // berhenti mencoba jika sudah terkoneksi
+                } else {
+                    Log.e("Bluetooth", "Reconnect failed")
+                    saveLogToFile(
+                        this@MainActivity,
+                        "Reconnect Bluetooth",
+                        "ERROR",
+                        "Reconnect ke-${attempt} gagal"
+                    )
+                }
+
+                attempt++
+                delay(3000)
+            }
+        }
     }
 
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(p0: Context?, p1: Intent?) {
 
-            if (BluetoothDevice.ACTION_FOUND == p1?.action){
+    private fun testObdConnection() {
 
-                val device : BluetoothDevice? = if (VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
-                    p1.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-                } else {
-                    p1.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+        val input = bluetoothViewModel.bluetoothSocket.value?.inputStream
+        val output = bluetoothViewModel.bluetoothSocket.value?.outputStream
+
+        if (input != null && output != null) {
+//            obdViewModel.startReading(input, output)
+            obdViewModel.startReading(this@MainActivity, input, output)
+        }
+
+
+        val service = Intent(this@MainActivity, OBDForegroundService::class.java)
+        obdViewModel.changeServiceIntent(service)
+//        startService(obdViewModel.serviceIntent.value)
+        lifecycleScope.launch {
+//            val oo = obdViewModel.readSuccess.first()
+            obdViewModel.readSuccess.collectLatest { success ->
+                if (success == false && obdViewModel.serviceIntent.value != null){
+                    makeToast(this@MainActivity, "kode read success untuk menghentikan notif")
+                    stopService(obdViewModel.serviceIntent.value)
                 }
-                if(ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED){
-                    ActivityCompat.requestPermissions(this@MainActivity, arrayOf(Manifest.permission.BLUETOOTH), REQUEST_PERMISSION)
-                    return
-                }
-                device?.let {
-                    val name = it.name ?: "Unknown Device"
-                    val address = it.address
-                    var deviceItem = BluetoothDeviceItem(
-                        name = name,
-                        address = address
-                    )
-                    Log.d("BluetoothScan", "Device found: $name - $address")
-                    listBluetoothDevice.add(deviceItem)
-                    bluetoothDeviceAdapter.notifyItemInserted(listBluetoothDevice.size-1)
+                else if (success == true){
+                    startService(obdViewModel.serviceIntent.value)
                 }
             }
         }
     }
 
+    private val receiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                BluetoothDevice.ACTION_FOUND -> {
+                    val device: BluetoothDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                    }
+
+                    if (ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH)
+                        != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        ActivityCompat.requestPermissions(
+                            this@MainActivity,
+                            arrayOf(Manifest.permission.BLUETOOTH),
+                            REQUEST_PERMISSION
+                        )
+                        return
+                    }
+
+                    device?.let {
+                        val name = it.name ?: "Unknown Device"
+                        val address = it.address
+                        val deviceItem = BluetoothDeviceItem(name = name, address = address)
+                        Log.d("BluetoothScan", "Device found: $name - $address")
+                        listBluetoothDevice.add(deviceItem)
+                        bluetoothDeviceAdapter.notifyItemInserted(listBluetoothDevice.size - 1)
+                    }
+                }
+
+                BluetoothAdapter.ACTION_STATE_CHANGED -> {
+                    val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+                    when (state) {
+                        BluetoothAdapter.STATE_OFF -> {
+                            Log.d("BluetoothState", "Bluetooth is OFF")
+                            disconnectOrClose()
+                            // Misalnya update UI atau beri notifikasi ke user
+                        }
+                        BluetoothAdapter.STATE_ON -> {
+                            Log.d("BluetoothState", "Bluetooth is ON")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun disconnectOrClose(){
+        obdViewModel.stopReading()
+        if (obdViewModel.serviceIntent.value != null) {
+            stopService(obdViewModel.serviceIntent.value)
+        }
+        lifecycleScope.launch {
+            obdViewModel.updateBluetoothConnection(false)
+            mainViewModel.currentStreamId.firstOrNull()?.let {
+                mainViewModel.soundPool.stop(it)
+            }
+            mainViewModel.updateCurrentStreamId(null)
+            mainViewModel.updateIsPlaying(false)
+        }
+        bluetoothViewModel.disconnect()
+        listBluetoothDevice.clear()
+    }
+
+    override fun onStop() {
+        super.onStop()
+
+        lifecycleScope.launch {
+            unRegReceiver()
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        bluetoothViewModel.disconnect()
-        unregisterReceiver(receiver)
+        lifecycleScope.launch {
+            unRegReceiver()
+        }
+    }
+
+    suspend fun unRegReceiver(){
+        if (bluetoothViewModel.isReceiverRegistered.first() == true){
+            unregisterReceiver(receiver)
+            bluetoothViewModel.changeIsReceiverRegistered(false)
+        }
     }
 }

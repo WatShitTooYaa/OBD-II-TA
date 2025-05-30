@@ -1,4 +1,4 @@
-package com.example.obd_iiservice
+package com.example.obd_iiservice.bluetooth
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize

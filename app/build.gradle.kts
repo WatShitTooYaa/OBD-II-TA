@@ -4,11 +4,13 @@ plugins {
     id("kotlin-parcelize")
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+//    id("androidx.navigation.safeargs.kotlin")
+    id("androidx.navigation.safeargs.kotlin")
 }
 
 android {
     namespace = "com.example.obd_iiservice"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.obd_iiservice"
@@ -34,9 +36,21 @@ android {
         }
     }
 
+//    buildscript {
+//        repositories {
+//            google()
+//            mavenCentral()
+//        }
+//        dependencies {
+////            classpath(libs.androidx.navigation.safe.args.gradle.plugin)
+//        }
+//    }
+
     buildFeatures {
         viewBinding =  true
     }
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -53,6 +67,9 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.runtime.livedata)
+    implementation(libs.androidx.material3.android)
+    implementation(libs.androidx.recyclerview)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -60,6 +77,14 @@ dependencies {
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
+    implementation(libs.org.eclipse.paho.client.mqttv3)
+    implementation(libs.org.eclipse.paho.android.service)
+    implementation(libs.androidx.datastore.preferences)
+
+
+// Navigation Component
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
 //    implementation(libs.material.v150)
 //    implementation(libs.org.jetbrains.kotlin.plugin.parcelize.gradle.plugin)
 }

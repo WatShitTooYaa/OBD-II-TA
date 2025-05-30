@@ -37,39 +37,16 @@
             android:textSize="16sp"
             app:layout_constraintTop_toBottomOf="@+id/tv_item_name" />
 
-<!--        <Button-->
-<!--            android:layout_width="wrap_content"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:layout_marginVertical="10dp"-->
-<!--            android:text="connect"-->
-<!--            android:visibility=""-->
-<!--            app:layout_constraintBottom_toBottomOf="parent"-->
-<!--            app:layout_constraintEnd_toEndOf="parent"-->
-<!--            app:layout_constraintStart_toStartOf="parent"-->
-<!--            app:layout_constraintTop_toBottomOf="@+id/tv_item_address" />-->
-
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_connect"
+            android:id="@+id/btn_save"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginVertical="10dp"
-            android:text="connect"
+            android:text="save"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tv_item_address" />
-
-<!--        <com.example.obd_iiservice.ButtonConnect-->
-<!--            android:id="@+id/btn_connect"-->
-<!--            android:layout_width="wrap_content"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:layout_marginVertical="10dp"-->
-<!--            android:text="connect"-->
-
-<!--            app:layout_constraintBottom_toBottomOf="parent"-->
-<!--            app:layout_constraintEnd_toEndOf="parent"-->
-<!--            app:layout_constraintStart_toStartOf="parent"-->
-<!--            app:layout_constraintTop_toBottomOf="@+id/tv_item_address" />-->
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

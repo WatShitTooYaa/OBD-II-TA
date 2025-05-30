@@ -1,0 +1,104 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/threshold_main">
+
+    <LinearLayout
+        android:id="@+id/threshold_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- RPM -->
+        <TextView
+            android:text="RPM Threshold:"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content" />
+        <SeekBar
+            android:id="@+id/seekBar_rpm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="8000" />
+        <TextView
+            android:id="@+id/text_rpm"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:text="3000"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Speed -->
+        <TextView
+            android:text="Speed Threshold (km/h):"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content" />
+        <SeekBar
+            android:id="@+id/seekBar_speed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="200" />
+        <TextView
+            android:id="@+id/text_speed"
+            android:text="120"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Throttle -->
+        <TextView
+            android:text="Throttle Threshold (%):"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"/>
+        <SeekBar
+            android:id="@+id/seekBar_throttle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100" />
+        <TextView
+            android:id="@+id/text_throttle"
+            android:text="90"
+            android:layout_marginBottom="16dp"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"/>
+
+        <!-- Temp -->
+        <TextView
+            android:text="Temperature Threshold (°C):"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"/>
+        <SeekBar
+            android:id="@+id/seekBar_temp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="120" />
+        <TextView
+            android:id="@+id/text_temp"
+            android:text="100"
+            android:layout_marginBottom="16dp"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"/>
+
+        <!-- MAF -->
+        <TextView
+            android:text="MAF Threshold (g/s):"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"/>
+        <SeekBar
+            android:id="@+id/seekBar_maf"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="50" />
+        <TextView
+            android:id="@+id/text_maf"
+            android:text="25"
+            android:layout_marginBottom="16dp"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"/>
+
+        <Button
+            android:id="@+id/btn_save_thresholds"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Save Thresholds" />
+    </LinearLayout>
+</ScrollView>

@@ -1,8 +1,7 @@
-package com.example.obd_iiservice
+package com.example.obd_iiservice.bluetooth
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.example.obd_iiservice.databinding.ItemDeviceBinding
 
@@ -28,12 +27,14 @@ class BluetoothDeviceAdapter(
         val (name, address) = listDevice[position]
         holder.binding.tvItemName.text = name
         holder.binding.tvItemAddress.text = address
-        holder.binding.btnConnect.setOnClickListener {
-            listener.onConnect(address)
+        holder.binding.btnSave.setOnClickListener {
+//            listener.onConnect(address)
+            listener.onSaveBluetoothDevice(address)
         }
     }
 
     interface OnDeviceConnectListener {
-        fun onConnect(address: String)
+//        fun onConnect(address: String)
+        fun onSaveBluetoothDevice(address: String)
     }
 }

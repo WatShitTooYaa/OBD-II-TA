@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:menuCategory="container">
+        <item
+            android:id="@+id/nav_log"
+            android:title="Log"
+            android:icon="@drawable/baseline_dehaze_24" />
+
+        <item
+            android:id="@+id/nav_settings"
+            android:title="Settings"
+            android:icon="@drawable/baseline_settings_24" />
+
+        <item
+            android:id="@+id/nav_treshold"
+            android:title="Treshold"
+            android:icon="@drawable/_682842_breeze_fast_speed_weather_wind_icon" />
+
+
+        <item
+            android:id="@+id/nav_quit"
+            android:title="Quit"
+            android:icon="@drawable/quit_icon"
+            />
+    </group>
+</menu>
