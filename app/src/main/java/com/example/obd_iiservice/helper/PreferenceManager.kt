@@ -146,7 +146,14 @@ class PreferenceManager @Inject constructor(
         context.dataStore.edit { it.clear() }
     }
 
-    suspend fun getCurrentConfig() : MQTTConfig {
+    suspend fun checkDataForConnecting() : Boolean {
+        val topic = mqttTopic.first()
+        val host = mqttHost.first()
+        val port = mqttPort.first()
+        return topic != null && host != null && port != null
+    }
+
+    suspend fun getMQTTConfig() : MQTTConfig {
         val topic = mqttTopic.first()
         val host = mqttHost.first()
         val port = mqttPort.first()

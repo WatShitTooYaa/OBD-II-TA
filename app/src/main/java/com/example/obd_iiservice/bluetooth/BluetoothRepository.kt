@@ -5,16 +5,28 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.UUID
 import javax.inject.Inject
 
-class BluetoothRepository @Inject constructor(
+interface BluetoothRepository {
+    suspend fun connectToDevice(address: String): BluetoothSocket?
+    suspend fun updateBluetoothSocket(socket: BluetoothSocket?)
+
+    val bluetoothSocket: StateFlow<BluetoothSocket?>
+}
+
+class BluetoothRepositoryImpl @Inject constructor(
     private val bluetoothAdapter: BluetoothAdapter
-) {
+) : BluetoothRepository {
+    private var _bluetoothSocket = MutableStateFlow<BluetoothSocket?>(null)
+    override val bluetoothSocket : StateFlow<BluetoothSocket?> = _bluetoothSocket
+
     @SuppressLint("MissingPermission")
-    suspend fun connectToDevice(address: String): BluetoothSocket? {
+    override suspend fun connectToDevice(address: String): BluetoothSocket? {
         val device = bluetoothAdapter.getRemoteDevice(address)
         val uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
 
@@ -31,6 +43,10 @@ class BluetoothRepository @Inject constructor(
                 return@withContext null
             }
         }
+    }
+
+    override suspend fun updateBluetoothSocket(socket: BluetoothSocket?) {
+        _bluetoothSocket.emit(socket)
     }
 }
 

@@ -16,6 +16,10 @@
             android:title="Treshold"
             android:icon="@drawable/_682842_breeze_fast_speed_weather_wind_icon" />
 
+        <item
+            android:id="@+id/nav_dtc"
+            android:title="DTC"
+            android:icon="@drawable/_682842_breeze_fast_speed_weather_wind_icon" />
 
         <item
             android:id="@+id/nav_quit"

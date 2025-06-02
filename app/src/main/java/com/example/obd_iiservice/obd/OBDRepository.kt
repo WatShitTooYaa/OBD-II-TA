@@ -54,10 +54,10 @@ class OBDRepositoryImpl @Inject constructor() : OBDRepository {
                     output.write("$pid\r".toByteArray())
                     output.flush()
 
-                    delay(300) // beri waktu respons
+                    delay(100) // beri waktu respons
 
                     val rawResponseFromAdapter = readUntilPrompt(input)
-                    Log.d("OBD_V21_RAW", "PID: $pid, Raw Response: '$rawResponseFromAdapter'")
+//                    Log.d("OBD_V21_RAW", "PID: $pid, Raw Response: '$rawResponseFromAdapter'")
 //                    val response = readUntilPrompt(input)
                     val response = rawResponseFromAdapter
                         .replace(
@@ -69,7 +69,7 @@ class OBDRepositoryImpl @Inject constructor() : OBDRepository {
                         .replace("\n", "")
                         .trim()
 
-                    saveLogToFile(context, "OBD_RESPONSE_Repo", "data", response)
+//                    saveLogToFile(context, "OBD_RESPONSE_Repo", "data", response)
 
                     when (pid) {
                         "010C" -> parseRegex(
@@ -78,25 +78,25 @@ class OBDRepositoryImpl @Inject constructor() : OBDRepository {
                         )?.let {
                             val rpm = (it[0] * 256 + it[1]) / 4
                             data["Rpm"] = rpm.toString()
-                            saveLogToFile(context, "RPM Repo", "data", rpm.toString())
+//                            saveLogToFile(context, "RPM Repo", "data", rpm.toString())
                         }
 
                         "010D" -> parseRegex(response, "41 0D ([0-9A-Fa-f]{2})")?.let {
                             val speed = it[0]
                             data["Speed"] = speed.toString()
-                            saveLogToFile(context, "speed repo", "data", speed.toString())
+//                            saveLogToFile(context, "speed repo", "data", speed.toString())
                         }
 
                         "0111" -> parseRegex(response, "41 11 ([0-9A-Fa-f]{2})")?.let {
                             val throttle = (it[0] * 100) / 255
                             data["Throttle"] = throttle.toString()
-                            saveLogToFile(context, "throttle repo", "data", throttle.toString())
+//                            saveLogToFile(context, "throttle repo", "data", throttle.toString())
                         }
 
                         "0105" -> parseRegex(response, "41 05 ([0-9A-Fa-f]{2})")?.let {
                             val temp = it[0] - 40
                             data["Temp"] = temp.toString()
-                            saveLogToFile(context, "temp repo", "data", temp.toString())
+//                            saveLogToFile(context, "temp repo", "data", temp.toString())
                         }
 
                         "0110" -> parseRegex(
@@ -105,7 +105,7 @@ class OBDRepositoryImpl @Inject constructor() : OBDRepository {
                         )?.let {
                             val maf = (it[0] * 256 + it[1]) / 100.0
                             data["Maf"] = "%.2f".format(Locale.US, maf)
-                            saveLogToFile(context, "maf repo", "data", maf.toString())
+//                            saveLogToFile(context, "maf repo", "data", maf.toString())
                         }
 
                         else -> {
@@ -186,110 +186,6 @@ class OBDRepositoryImpl @Inject constructor() : OBDRepository {
         delay(300)
         return sendCommand(input, output, "03") // DTC request
     }
-//    override suspend fun readOBDData(
-//        input: InputStream,
-//        output: OutputStream,
-//        context: Context,
-//    ): Map<String, String> {
-//        val data = mutableMapOf<String, String>()
-//        val buffer = ByteArray(1024)
-//
-////        try {
-//            for (pid in pidList) {
-//                if (isBluetoothConnected.first() == false){
-//                    break
-//                }
-//                withContext(Dispatchers.IO) {
-//                    try {
-//                        output.write((pid + "\r").toByteArray())
-//                        output.flush()
-//
-////                        val bytesRead = input.read(buffer)
-////                        if (bytesRead > 0) {
-//                        val response = readUntilPrompt(input)
-////                            Log.d("OBD_RESPONSE", "Res: $response")
-//                        saveLogToFile(context, "OBD_RESPONSE_Repo", "data", response.toString())
-//
-//                        when (pid) {
-//                            "010C" -> Regex("41 0C ([0-9A-Fa-f]{2}) ([0-9A-Fa-f]{2})").find(response)
-//                                ?.let {
-//                                    val a = it.groupValues[1].toInt(16)
-//                                    val b = it.groupValues[2].toInt(16)
-//                                    val rpm = (a * 256 + b) / 4
-//                                    data["Rpm"] = "$rpm"
-////                                    Log.d("OBD", "Parsed RPM: $rpm")
-//                                    saveLogToFile(context, "RPM Repo", "data", rpm.toString())
-//                                }
-//
-//                            "010D" -> Regex("41 0D ([0-9A-Fa-f]{2})").find(response)?.let {
-//                                val speed = it.groupValues[1].toInt(16)
-//                                data["Speed"] = "$speed"
-//                                saveLogToFile(context, "speed repo", "data", speed.toString())
-////                                Log.d("OBD", "Parsed Speed: $speed")
-//                            }
-//
-//                            "0111" -> Regex("41 11 ([0-9A-Fa-f]{2})").find(response)?.let {
-//                                val throttle = (it.groupValues[1].toInt(16) * 100) / 255
-//                                data["Throttle"] = "$throttle"
-//                                saveLogToFile(context, "throttle repo", "data", throttle.toString())
-////                                Log.d("OBD", "Parsed Throttle: $throttle%")
-//                            }
-//
-//                            "0105" -> Regex("41 05 ([0-9A-Fa-f]{2})").find(response)?.let {
-//                                val temp = it.groupValues[1].toInt(16) - 40
-//                                data["Temp"] = "$temp"
-//                                saveLogToFile(context, "temp repo", "data", temp.toString())
-////                                Log.d("OBD", "Parsed Temp: $temp°C")
-//                            }
-//
-//                            "0110" -> Regex("41 10 ([0-9A-Fa-f]{2}) ([0-9A-Fa-f]{2})").find(response)
-//                                ?.let {
-//                                    val a = it.groupValues[1].toInt(16)
-//                                    val b = it.groupValues[2].toInt(16)
-//                                    val maf = (a * 256 + b) / 100.0
-//                                    data["Maf"] = "%.2f".format(maf).replace(",", ".")
-//                                    saveLogToFile(context, "maf repo", "data", maf.toString())
-////                                    Log.d("OBD", "Parsed MAF: ${"%.2f".format(maf)} g/s")
-//                                }
-//
-//                            else -> {
-//                                Log.d("OBD", "No parser implemented for PID: $pid")
-//                                saveLogToFile(context, "parsing", "Error", "No parser implemented for PID: $pid")
-//                            }
-//                        }
-////                        } else {
-////                            Log.w("OBD", "No data read for PID: $pid")
-////                            saveLogToFile(context, "no data", "Error", "No data read for PID: $pid")
-////                        }
-//                    } catch (e: Exception) {
-//                        Log.e("OBD", "Error while reading PID: $pid", e)
-//                        saveLogToFile(context, "reading pid", "Error", "Error while reading PID: $pid,\n $e")
-//                        updateBluetoothConnection(false)
-//                    }
-//                }
-////                delay(1000)
-//            }
-////        } catch (e: IOException) {
-////            Log.e("OBD", "Bluetooth disconnected (IOException)", e)
-////            // Optional: stop service / update UI
-////        }
-//
-//
-////        Log.d("OBD", "Final parsed data: $data")
-//        return data
-//    }
-//
-//    private fun readUntilPrompt(input: InputStream): String {
-//        val buffer = ByteArrayOutputStream()
-//        while (true) {
-//            val byte = input.read()
-//            if (byte == -1) break
-//            if (byte.toChar() == '>') break
-//            buffer.write(byte)
-//        }
-//        return buffer.toString("UTF-8")
-//    }
-
 
     override suspend fun updateData(data: Map<String, String>) {
         _obdData.emit(data)

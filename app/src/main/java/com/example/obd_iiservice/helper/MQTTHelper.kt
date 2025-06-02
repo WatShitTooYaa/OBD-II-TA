@@ -13,8 +13,12 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONObject
 import java.util.Locale
 import java.util.UUID
+import javax.inject.Inject
 
-class MqttHelper(private val config : MQTTConfig) {
+
+class MqttHelper constructor(
+    private val config : MQTTConfig,
+) {
 
     private val clientId = "android-client-" + UUID.randomUUID().toString()
     private val mqttHost = config.host
@@ -79,14 +83,14 @@ class MqttHelper(private val config : MQTTConfig) {
     fun sendDiscoveryConfigs(mqttClient: MqttAsyncClient) {
         val sensors = listOf(
             Triple("rpm", "OBD RPM", "rpm"),
-            Triple("temp", "OBD Temperature", "°C"),
-            Triple("maf", "OBD MAF", "g/s"),
             Triple("speed", "OBD Speed", "km/h"),
             Triple("throttle", "OBD Throttle", "%"),
+            Triple("temp", "OBD Temperature", "°C"),
+            Triple("maf", "OBD MAF", "g/s"),
         )
 
         for ((id, name, unit) in sensors) {
-//            val configTopic = "obd_fate/sensor/obd_$id/config"
+            val configTopic = "$mqttTopic/sensor/obd_$id/config"
 
             val configPayload = JSONObject().apply {
                 put("name", name)
@@ -107,8 +111,8 @@ class MqttHelper(private val config : MQTTConfig) {
             }
 
             mqttClient.publish(
-//                configTopic,
-                mqttTopic,
+                configTopic,
+//                mqttTopic,
                 configPayload.toString().toByteArray(),
                 2,
                 true // retain true agar HA tetap bisa deteksi meskipun restart
@@ -127,10 +131,10 @@ class MqttHelper(private val config : MQTTConfig) {
         }
     }
 
-
     fun disconnect() {
         if (mqttClient.isConnected) {
             mqttClient.disconnect()
         }
     }
+
 }

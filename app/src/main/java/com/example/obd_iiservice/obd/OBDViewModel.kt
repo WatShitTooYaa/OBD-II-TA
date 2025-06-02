@@ -2,6 +2,7 @@ package com.example.obd_iiservice.obd
 
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -29,14 +30,24 @@ import kotlin.collections.iterator
 class OBDViewModel @Inject constructor(
     private val obdRepository: OBDRepository
 ) : ViewModel() {
-    private var _obdData = MutableStateFlow<Map<String,String>>(emptyMap())
-    val obdData : StateFlow<Map<String,String>> = _obdData
+//    private var _obdData = MutableStateFlow<Map<String,String>>(emptyMap())
+    private var _obdData = obdRepository.obdData
+    val obdData : StateFlow<Map<String,String>> = obdRepository.obdData
 
     private var _serviceIntent = MutableLiveData<Intent?>(null)
     val serviceIntent : LiveData<Intent?> = _serviceIntent
 
     private var _readSuccess = MutableStateFlow<Boolean>(false)
     val readSuccess : StateFlow<Boolean> = _readSuccess
+
+    private var _isServiceBound = MutableStateFlow<Boolean>(false)
+    val isServiceBound : StateFlow<Boolean> = _isServiceBound
+
+    private var _obdService= MutableStateFlow<OBDForegroundService?>(null)
+    val obdService : StateFlow<OBDForegroundService?> = _obdService
+
+//    private var _serviceConnection = MutableStateFlow<ServiceConnection?>(null)
+//    val serviceConnection : StateFlow<ServiceConnection?> = _serviceConnection
 
     private var readJob : Job? = null
 
@@ -72,26 +83,8 @@ class OBDViewModel @Inject constructor(
                 }
                 return response.toString().trim()
             }
-                //init
-//            val initCmds = listOf(
-//                "ATZ",
-////                "ATD",
-//                "ATE0",
-//                "ATL0",
-//                "ATS0",
-//                "ATH0",
-//                "ATSP0",
-////                "0100",
-//            )
             var allSuccess = true
-//            for (cmd in initCmds) { Command: 0100 → Response: 410088198000>
-//                val response = sendCommand(cmd, input, output)
-//                Log.d("OBD", "Response: $response")
-//                if (response.contains("ERROR", ignoreCase = true)) {
-//                    allSuccess = false
-//                    break
-//                }
-//            }
+
             val initCmds = listOf("ATZ", "ATE0", "ATL0", "ATH0", "ATSP0", "0100")
 
             for (cmd in initCmds) {
@@ -121,11 +114,11 @@ class OBDViewModel @Inject constructor(
 //                    Log.d("Data_OBD", data.toString())
                     saveLogToFile(context, "OBD Data", "DATA", data.toString())
 //                    _obdData.value =
-                    _obdData.update { oldData ->
-                        oldData.toMutableMap().apply {
-                            putAll(data)
-                        }
-                    }
+//                    _obdData.update { oldData ->
+//                        oldData.toMutableMap().apply {
+//                            putAll(data)
+//                        }
+//                    }
 //                    _readSuccess.update { oldData ->
 //                        oldData
 //                    }
@@ -198,6 +191,18 @@ class OBDViewModel @Inject constructor(
     suspend fun updateBluetoothConnection(connect: Boolean){
         obdRepository.updateBluetoothConnection(connect)
     }
+
+    suspend fun updateServiceBound(bound: Boolean){
+        _isServiceBound.emit(bound)
+    }
+
+    suspend fun updateOBDService(obdService: OBDForegroundService?){
+        _obdService.emit(obdService)
+    }
+
+//    suspend fun updateServiceConnection(serviceConnection: ServiceConnection?){
+//        _serviceConnection.emit(serviceConnection)
+//    }
 
     fun stopReading() {
         _readSuccess.value = false

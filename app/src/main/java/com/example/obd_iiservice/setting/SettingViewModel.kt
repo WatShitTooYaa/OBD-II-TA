@@ -118,10 +118,7 @@ class SettingViewModel @Inject constructor(
     }
 
     suspend fun checkDataForConnecting() : Boolean {
-        val topic = mqttTopic.first()
-        val host = mqttHost.first()
-        val port = mqttPort.first()
-        return topic != null && host != null && port != null
+        return preferenceManager.checkDataForConnecting()
     }
 
     fun clearData() {

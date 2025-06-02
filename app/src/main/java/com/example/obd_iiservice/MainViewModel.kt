@@ -3,6 +3,7 @@ package com.example.obd_iiservice
 import android.app.Application
 import android.media.SoundPool
 import androidx.lifecycle.ViewModel
+import com.example.obd_iiservice.main.MainRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,13 +11,14 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    application: Application
+//    application: Application,
+    private val mainRepository: MainRepository
 ) : ViewModel() {
 
-    private val app = application as App
+//    private val app = application as App
 
-    val soundPool = app.soundPool
-    val beepSoundId = app.beepSoundId
+    val soundPool = mainRepository.soundPool
+    val beepSoundId = mainRepository.beepSoundId
 
 //    private var _soundPool = MutableStateFlow<SoundPool?>(null)
 //    val soundPool : StateFlow<SoundPool?> = _soundPool
@@ -24,11 +26,11 @@ class MainViewModel @Inject constructor(
 //    private var _beepSoundId = MutableStateFlow<Int?>(null)
 //    val beepSoundId : StateFlow<Int?> = _beepSoundId
 
-    private var _isPlaying = MutableStateFlow<Boolean>(false)
-    val isPlaying : StateFlow<Boolean> = _isPlaying
+//    private var _isPlaying = MutableStateFlow<Boolean>(false)
+    val isPlaying : StateFlow<Boolean> = mainRepository.isPlaying
 
-    private var _currentStreamId = MutableStateFlow<Int?>(null)
-    val currentStreamId : StateFlow<Int?> = _currentStreamId
+//    private var _currentStreamId = MutableStateFlow<Int?>(null)
+    val currentStreamId : StateFlow<Int?> = mainRepository.currentStreamId
 
     private var _isThresholdExceeded = MutableStateFlow<Boolean>(false)
     val isThresholdExceeded : StateFlow<Boolean> = _isThresholdExceeded
@@ -43,11 +45,13 @@ class MainViewModel @Inject constructor(
 //    }
 
     suspend fun updateIsPlaying(isPlaying: Boolean){
-        _isPlaying.emit(isPlaying)
+//        _isPlaying.emit(isPlaying)
+        mainRepository.updateIsPlaying(isPlaying)
     }
 
     suspend fun updateCurrentStreamId(id: Int?){
-        _currentStreamId.emit(id)
+//        _currentStreamId.emit(id)
+        mainRepository.updateCurrentStreamId(id)
     }
 
     suspend fun updateIsThresholdExceeded(bool: Boolean){

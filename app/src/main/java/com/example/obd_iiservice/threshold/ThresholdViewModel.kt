@@ -13,56 +13,52 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ThresholdViewModel @Inject constructor(
-    private val preferenceManager: PreferenceManager
+    private val thresholdRepository: ThresholdRepository
 ) : ViewModel() {
 //    val thresholdKey = mutableMapOf<ThresholdConfig>()
     val thresholdKey = mutableMapOf<String, Int>()
+//
+//
+//    val rpmThreshold: StateFlow<Int> = preferenceManager.rpmThreshold
+//        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+//
+//    val speedThreshold: StateFlow<Int> = preferenceManager.speedThreshold
+//        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+//
+//    val throttleThreshold: StateFlow<Int> = preferenceManager.throttleThreshold
+//        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+//
+//    val tempThreshold: StateFlow<Int> = preferenceManager.tempThreshold
+//        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+//
+//    val mafThreshold : StateFlow<Double> = preferenceManager.mafThreshold
+//        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-
-    val rpmThreshold: StateFlow<Int> = preferenceManager.rpmThreshold
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    val speedThreshold: StateFlow<Int> = preferenceManager.speedThreshold
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    val throttleThreshold: StateFlow<Int> = preferenceManager.throttleThreshold
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    val tempThreshold: StateFlow<Int> = preferenceManager.tempThreshold
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    val mafThreshold : StateFlow<Double> = preferenceManager.mafThreshold
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
-
-    val thresholdData = combine(
-        rpmThreshold, speedThreshold, throttleThreshold, tempThreshold, mafThreshold
-    ) {rpm, speed, throttle, temp, maf ->
-        ThresholdConfig(
-            rpm,
-            speed,
-            throttle,
-            temp,
-            maf
-        )
-    }
+    val thresholdData = thresholdRepository.thresholdData
 
     fun saveRpmThreshold(rpm: Int) {
-        viewModelScope.launch { preferenceManager.saveRpmThreshold(rpm) }
+//        viewModelScope.launch { preferenceManager.saveRpmThreshold(rpm) }
+        thresholdRepository.saveRpmThreshold(rpm)
     }
 
     fun saveSpeedThreshold(speed: Int) {
-        viewModelScope.launch { preferenceManager.saveSpeedThreshold(speed) }
+//        viewModelScope.launch { preferenceManager.saveSpeedThreshold(speed) }
+        thresholdRepository.saveSpeedThreshold(speed)
     }
 
     fun saveThrottleThreshold(throttle: Int) {
-        viewModelScope.launch { preferenceManager.saveThrottleThreshold(throttle) }
+//        viewModelScope.launch { preferenceManager.saveThrottleThreshold(throttle) }
+        thresholdRepository.saveThrottleThreshold(throttle)
     }
 
     fun saveTempThreshold(temp: Int) {
-        viewModelScope.launch { preferenceManager.saveTempThreshold(temp)}
+//        viewModelScope.launch { preferenceManager.saveTempThreshold(temp)}
+        thresholdRepository.saveTempThreshold(temp)
     }
 
     fun saveMafThreshold(maf : Double) {
-        viewModelScope.launch { preferenceManager.saveMafThreshold(maf) }
+//        viewModelScope.launch { preferenceManager.saveMafThreshold(maf) }
+        thresholdRepository.saveMafThreshold(maf)
+
     }
 }

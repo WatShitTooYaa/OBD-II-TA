@@ -8,6 +8,7 @@ data class PartialMQTTConfig(
     val password: String?
 )
 
+
 data class MQTTConfig(
     val topic: String?,
     val host: String?,

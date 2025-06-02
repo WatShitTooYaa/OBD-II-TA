@@ -15,7 +15,7 @@
         android:layout_gravity="center">
 
         <TextView
-            android:id="@+id/tc_dtc_item"
+            android:id="@+id/tv_dtc_code"
             android:layout_width="match_parent"
             android:layout_height="30dp"
             android:text="DTC item"
@@ -26,6 +26,19 @@
             android:textColor="@color/hitam_pekat"
             android:textStyle="bold"
             app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tv_dtc_desc"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:layout_marginHorizontal="3sp"
+            android:layout_marginVertical="3dp"
+            android:gravity="center"
+            android:text="DTC item"
+            android:textColor="@color/hitam_pekat"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@+id/tv_dtc_code" />
 
 <!--        <TextView-->
 <!--            android:id="@+id/tv_item_address"-->
