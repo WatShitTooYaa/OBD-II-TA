@@ -40,6 +40,9 @@ class SettingViewModel @Inject constructor(
 
     val mqttPortType: StateFlow<String> = preferenceManager.mqttPortType
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "tcp")
+
+    val delayResponse: StateFlow<Long> = preferenceManager.delayResponse
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 //    val mqttConfig: Flow<MQTTConfig> = combine(
 //        mqttTopic, mqttHost, mqttPort, mqttUsername, mqttPassword
 //    ) { topic, host, port, username, password ->
@@ -115,6 +118,10 @@ class SettingViewModel @Inject constructor(
 
     fun saveMqttPortType(type: String) {
         viewModelScope.launch { preferenceManager.saveMqttPortType(type) }
+    }
+
+    fun saveDelayResponse(delay: Long) {
+        viewModelScope.launch { preferenceManager.saveDelayResponse(delay) }
     }
 
     suspend fun checkDataForConnecting() : Boolean {

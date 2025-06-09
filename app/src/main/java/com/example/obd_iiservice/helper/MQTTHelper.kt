@@ -16,7 +16,7 @@ import java.util.UUID
 import javax.inject.Inject
 
 
-class MqttHelper constructor(
+class MqttHelper(
     private val config : MQTTConfig,
 ) {
 

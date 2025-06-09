@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.obd_iiservice.R
 import com.example.obd_iiservice.databinding.ActivitySettingBinding
+import com.example.obd_iiservice.helper.makeToast
 import com.example.obd_iiservice.helper.saveLogToFile
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
@@ -49,7 +50,7 @@ class SettingActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun setUI(){
+    private fun setUI(){
 
         binding.apply {
 //            this.etMqttTopic.setText(settingViewModel.mqttTopic.first())
@@ -85,25 +86,6 @@ class SettingActivity : AppCompatActivity() {
                 }
 
                 launch {
-//                    combine(
-//                        settingViewModel.mqttTopic,
-//                        settingViewModel.mqttHost,
-//                        settingViewModel.mqttPort,
-//                        settingViewModel.mqttUsername,
-//                        settingViewModel.mqttPassword,
-//                        settingViewModel.mqttPortType
-//                    ) { topic, host, port, username, password, portType ->
-//                        MQTTConfig(topic, host, port, username, password, portType)
-//                    }.collectLatest { config ->
-//                        binding.etMqttTopic.setText(config.topic)
-//                        binding.etMqttHost.setText(config.host)
-//    //                    config.port?.let { binding.etMqttPort.setText(it.toString()) } ?: 0
-//                        binding.etMqttPort.setText(config.port?.toString() ?: "0")
-//                        binding.etMqttUsername.setText(config.username)
-//                        binding.etMqttPassword.setText(config.password)
-//
-//                        Log.d("MQTT_PREFS", "Semua data diisi ke UI")
-//                    }
                     settingViewModel.mqttConfig.collectLatest { config ->
                         binding.etMqttTopic.setText(config.topic)
                         binding.etMqttHost.setText(config.host)
@@ -111,6 +93,12 @@ class SettingActivity : AppCompatActivity() {
                         binding.etMqttPort.setText(config.port?.toString() ?: "0")
                         binding.etMqttUsername.setText(config.username)
                         binding.etMqttPassword.setText(config.password)
+                    }
+                }
+
+                launch {
+                    settingViewModel.delayResponse.collectLatest {delay ->
+                        binding.etDelayResponse.setText(delay.toString())
                     }
                 }
             }
@@ -155,15 +143,17 @@ class SettingActivity : AppCompatActivity() {
                 val topic = binding.etMqttTopic.text.toString()
                 val host = binding.etMqttHost.text.toString()
                 val port = binding.etMqttPort.text.toString()
-                val allData = topic.isNotBlank() && host.isNotBlank() && port.isNotBlank()
+                val delay = binding.etDelayResponse.text.toString()
+                val allData = topic.isNotBlank() && host.isNotBlank() && port.isNotBlank() && delay.isNotBlank()
                 if (allData){
                     settingViewModel.saveMqttTopic(this.etMqttTopic.text.toString())
                     settingViewModel.saveMqttHost(this.etMqttHost.text.toString())
                     settingViewModel.saveMqttPort(this.etMqttPort.text.toString().toInt())
                     settingViewModel.saveMqttUsername(this.etMqttUsername.text.toString())
                     settingViewModel.saveMqttPassword(this.etMqttPassword.text.toString())
+                    settingViewModel.saveDelayResponse(this.etDelayResponse.text.toString().toLong())
                 } else {
-                    makeToast("Cannot null")
+                    makeToast(this@SettingActivity, "harus diisi semua data")
                 }
             }
 
@@ -198,7 +188,7 @@ class SettingActivity : AppCompatActivity() {
         }
     }
 
-    fun makeToast(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
+//    fun makeToast(message: String) {
+//        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+//    }
 }

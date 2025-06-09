@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/bot_nav_home">
+
+    <fragment
+        android:id="@+id/bot_nav_home"
+        android:name="com.example.obd_iiservice.ui.home.HomeFragment"
+        android:label="@string/title_home"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/bot_nav_dtc"
+        android:name="com.example.obd_iiservice.ui.dtc.DTCFragment"
+        android:label="@string/title_dashboard"
+        tools:layout="@layout/fragment_dtc" />
+
+    <fragment
+        android:id="@+id/bot_nav_log"
+        android:name="com.example.obd_iiservice.ui.log.LogFragment"
+        android:label="@string/title_notifications"
+        tools:layout="@layout/fragment_log" />
+
+    <fragment
+        android:id="@+id/bot_nav_setting"
+        android:name="com.example.obd_iiservice.ui.setting.SettingFragment"
+        android:label="Setting"
+        tools:layout="@layout/fragment_setting" />
+</navigation>

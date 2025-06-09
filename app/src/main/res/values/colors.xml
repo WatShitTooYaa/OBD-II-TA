@@ -13,4 +13,14 @@
     <color name="teal_700">#FF018786</color>
     <color name="pink_500">#D81B60</color>
     <color name="pink_200">#FF8FAF</color>
+
+    <color name="transparent">#FFFFFF</color>
+
+<!--    custom-->
+    <color name="green_bg">#D2FF72</color>
+    <color name="green_second">#73EC8B</color>
+    <color name="btn_color_enable">#15B392</color>
+    <color name="btn_color_disable">#54C392</color>"
+    <color name="green_last">#54C392</color>
+    <color name="red_circle_status">#ff2e2e</color>
 </resources>

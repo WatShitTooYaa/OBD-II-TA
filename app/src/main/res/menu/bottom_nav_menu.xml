@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/bot_nav_home"
+        android:icon="@drawable/ic_home_black_24dp"
+        android:title="@string/title_home" />
+
+
+    <item
+        android:id="@+id/bot_nav_log"
+        android:icon="@drawable/history_log"
+        android:title="@string/title_notifications" />
+
+    <item
+        android:id="@+id/bot_nav_dtc"
+        android:icon="@drawable/car_engine_icon"
+        android:title="DTC" />
+
+    <item
+        android:id="@+id/bot_nav_setting"
+        android:icon="@drawable/setting_icon"
+        android:title="Setting" />
+
+</menu>

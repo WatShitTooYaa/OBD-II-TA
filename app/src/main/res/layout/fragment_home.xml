@@ -1,14 +1,227 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".test.HomeFragment">
+    android:layout_height="match_parent">
 
-    <!-- TODO: Update blank fragment layout -->
-    <TextView
+<!--    section top -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/cl_container_status"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:text="@string/hello_blank_fragment" />
+        android:layout_height="100dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-</FrameLayout>
+        <TextView
+            android:id="@+id/tv_device"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No Device"
+            android:padding="5dp"
+            android:textSize="15sp"
+            android:layout_marginTop="5dp"
+            android:layout_marginStart="10dp"
+            android:background="@color/blue_sky"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tv_status_bluetooth"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:background="@color/blue_sky"
+            android:padding="5dp"
+            android:text="Connected"
+            android:textSize="15sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageView
+            android:id="@+id/iv_icon_wifi"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="6dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="5dp"
+            android:background="@drawable/bg_icon"
+            android:scaleType="centerInside"
+            android:src="@drawable/wifi"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageView
+            android:id="@+id/iv_icon_bluetooth"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="6dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="5dp"
+            android:background="@drawable/bg_icon"
+            android:scaleType="centerInside"
+            android:src="@drawable/bluetooth_circle"
+            app:layout_constraintEnd_toStartOf="@+id/iv_icon_wifi"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageView
+            android:id="@+id/iv_icon_obd"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="5dp"
+            android:background="@drawable/bg_icon"
+            android:padding="6dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/port"
+            app:layout_constraintEnd_toStartOf="@+id/iv_icon_bluetooth"
+            app:layout_constraintTop_toTopOf="parent" />
+
+
+        <com.example.obd_iiservice.ui.button.ButtonCustom
+            android:id="@+id/btn_scan_connect_bluetooth"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:enabled="true"
+            android:layout_marginBottom="10dp"
+            android:text="Scan Device"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+<!--    <androidx.core.widget.NestedScrollView-->
+<!--        android:id="@+id/nested_scroll"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="0dp"-->
+<!--        android:fillViewport="true"-->
+<!--        app:layout_constraintTop_toBottomOf="@id/cl_container_status"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent">-->
+
+<!--        section mid-bot-->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/container_all"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="@color/green_last"
+
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cl_container_status">
+
+        <!--        container when not connected-->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_container_devices"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginVertical="10dp"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_list_devices"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:layout_marginVertical="10dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:listitem="@layout/item_device" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        <!--        container when connected-->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_container_data"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginVertical="10dp"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/cl_container_gauge"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:layout_marginVertical="10dp"
+                android:background="@drawable/layout_bg_gauge"
+                android:orientation="horizontal"
+                android:paddingVertical="30dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+
+                <TextView
+                    android:id="@+id/textView3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Label"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <com.imsalman.gaugelibrary.Gauge
+                    android:id="@+id/gauge1"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:layout_gravity="center"
+                    android:paddingLeft="20dp"
+                    android:paddingTop="20dp"
+                    android:paddingRight="20dp"
+                    app:gaugeEndValue="1000"
+                    app:gaugePointEndColor="#00ff00"
+                    app:gaugePointSize="10"
+                    app:gaugePointStartColor="#4CAF50"
+                    app:gaugeStartAngle="180"
+                    app:gaugeStartValue="0"
+                    app:gaugeStrokeCap="ROUND"
+                    app:gaugeStrokeColor="#FF367A"
+                    app:gaugeStrokeWidth="15dp"
+                    app:gaugeSweepAngle="180"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/textView3" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_obd"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginHorizontal="10dp"
+                android:layout_marginVertical="10dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/cl_container_gauge"
+                tools:listitem="@layout/item_obd_data" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+<!--    </androidx.core.widget.NestedScrollView>-->
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

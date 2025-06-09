@@ -189,6 +189,25 @@
             />
     </RadioGroup>
 
+    <TextView
+        android:id="@+id/tv_delay_response"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="40dp"
+        android:layout_marginTop="10dp"
+        android:text="Set delay response"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/rg_auto_recon" />
+    <EditText
+        android:id="@+id/et_delay_response"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="40dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_delay_response"
+        />
+
+
     <com.example.obd_iiservice.ButtonConnect
         android:id="@+id/btn_mqtt_save"
         android:layout_width="100dp"
@@ -197,7 +216,7 @@
         android:layout_marginTop="10dp"
         android:text="Save"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/rg_auto_recon" />
+        app:layout_constraintTop_toBottomOf="@+id/et_delay_response" />
 
     <com.example.obd_iiservice.ButtonConnect
         android:id="@+id/btn_mqtt_clear"
@@ -207,6 +226,6 @@
         android:layout_marginTop="10dp"
         android:text="Clear"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/rg_auto_recon" />
+        app:layout_constraintTop_toBottomOf="@+id/et_delay_response" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

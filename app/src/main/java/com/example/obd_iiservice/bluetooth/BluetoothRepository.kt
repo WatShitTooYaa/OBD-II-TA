@@ -15,8 +15,9 @@ import javax.inject.Inject
 interface BluetoothRepository {
     suspend fun connectToDevice(address: String): BluetoothSocket?
     suspend fun updateBluetoothSocket(socket: BluetoothSocket?)
-
+    suspend fun updateConnectionState(state: BluetoothConnectionState)
     val bluetoothSocket: StateFlow<BluetoothSocket?>
+    val connectionState : StateFlow<BluetoothConnectionState>
 }
 
 class BluetoothRepositoryImpl @Inject constructor(
@@ -24,6 +25,9 @@ class BluetoothRepositoryImpl @Inject constructor(
 ) : BluetoothRepository {
     private var _bluetoothSocket = MutableStateFlow<BluetoothSocket?>(null)
     override val bluetoothSocket : StateFlow<BluetoothSocket?> = _bluetoothSocket
+
+    private val _connectionState = MutableStateFlow(BluetoothConnectionState.IDLE)
+    override val connectionState: StateFlow<BluetoothConnectionState> = _connectionState
 
     @SuppressLint("MissingPermission")
     override suspend fun connectToDevice(address: String): BluetoothSocket? {
@@ -47,6 +51,10 @@ class BluetoothRepositoryImpl @Inject constructor(
 
     override suspend fun updateBluetoothSocket(socket: BluetoothSocket?) {
         _bluetoothSocket.emit(socket)
+    }
+
+    override suspend fun updateConnectionState(state: BluetoothConnectionState) {
+        _connectionState.emit(state)
     }
 }
 

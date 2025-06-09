@@ -52,11 +52,11 @@ android {
 
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
 }
 
@@ -70,6 +70,9 @@ dependencies {
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.material3.android)
     implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.legacy.support.v4)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -87,4 +90,6 @@ dependencies {
     implementation(libs.androidx.navigation.ui.ktx)
 //    implementation(libs.material.v150)
 //    implementation(libs.org.jetbrains.kotlin.plugin.parcelize.gradle.plugin)
+    //UI library
+    implementation(libs.gauge.library.android)
 }

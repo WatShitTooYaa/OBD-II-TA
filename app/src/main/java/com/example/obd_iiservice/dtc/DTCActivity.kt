@@ -15,9 +15,8 @@ import com.example.obd_iiservice.bluetooth.BluetoothRepository
 import com.example.obd_iiservice.databinding.ActivityDtcBinding
 import com.example.obd_iiservice.helper.makeToast
 import com.example.obd_iiservice.helper.saveLogToFile
+import com.example.obd_iiservice.obd.OBDRepository
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -30,7 +29,7 @@ class DTCActivity : AppCompatActivity() {
     private val dtcViewModel : DTCViewModel by viewModels()
 
     @Inject lateinit var bluetoothRepository: BluetoothRepository
-
+    @Inject lateinit var obdRepository: OBDRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +54,9 @@ class DTCActivity : AppCompatActivity() {
         observeViewModel()
 
         binding.btnCheckDtc.setOnClickListener {
+            lifecycleScope.launch {
+                obdRepository.updateDoingJob(true)
+            }
             connectAndFetchDTC()
         }
     }
@@ -87,7 +89,6 @@ class DTCActivity : AppCompatActivity() {
 //        val device = bluetoothAdapter?.bondedDevices?.firstOrNull { it.name.contains("OBD") }
 //
 //        if (device == null) {
-//            Toast.makeText(this, "Perangkat OBD tidak ditemukan", Toast.LENGTH_SHORT).show()
 //            return
 //        }
 //
@@ -101,14 +102,16 @@ class DTCActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 if (socket == null){
-                    makeToast(this@DTCActivity, "Perangkat OBD tidak ditemukan")
+                    makeToast(this@DTCActivity, //            Toast.makeText(this, "Perangkat OBD tidak ditemukan", Toast.LENGTH_SHORT).show()
+                        "Perangkat OBD tidak ditemukan")
                     return@launch
                 }
                 val obdManager = OBDManager(socket)
+//                val response = obdManager.sendCommand()
                 val response = obdManager.getDTCs()
                 saveLogToFile(this@DTCActivity, "DTC response", "res", response)
                 dtcViewModel.parseAndSetDTC(response)
-
+                obdRepository.updateDoingJob(false)
             } catch (e: Exception) {
                 e.printStackTrace()
                 makeToast(this@DTCActivity, "Gagal koneksi OBD")

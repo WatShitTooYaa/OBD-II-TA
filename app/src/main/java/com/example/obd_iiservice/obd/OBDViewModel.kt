@@ -9,7 +9,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.obd_iiservice.helper.saveLogToFile
+import com.example.obd_iiservice.internet.NetworkConnectivityObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -28,9 +30,13 @@ import kotlin.collections.iterator
 
 @HiltViewModel
 class OBDViewModel @Inject constructor(
-    private val obdRepository: OBDRepository
+    private val obdRepository: OBDRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 //    private var _obdData = MutableStateFlow<Map<String,String>>(emptyMap())
+
+
+
     private var _obdData = obdRepository.obdData
     val obdData : StateFlow<Map<String,String>> = obdRepository.obdData
 

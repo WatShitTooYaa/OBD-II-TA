@@ -5,16 +5,13 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Build.VERSION
 import android.os.Bundle
-import android.os.IBinder
 import android.util.Log
 import android.view.View
 import android.widget.Toast
@@ -24,8 +21,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.ui.graphics.colorspace.connect
-
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -48,15 +43,12 @@ import com.example.obd_iiservice.obd.OBDViewModel
 import com.example.obd_iiservice.setting.SettingActivity
 import com.example.obd_iiservice.setting.SettingViewModel
 import com.example.obd_iiservice.threshold.ThresholdActivity
-import com.example.obd_iiservice.threshold.ThresholdViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -70,7 +62,6 @@ class MainActivity : AppCompatActivity() {
     private val obdViewModel : OBDViewModel by viewModels()
     private val settingViewModel: SettingViewModel by viewModels()
     private val mainViewModel : MainViewModel by viewModels()
-    private val thresholdViewModel : ThresholdViewModel by viewModels()
 
     @Inject
     lateinit var bluetoothAdapter: BluetoothAdapter
@@ -203,8 +194,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-
     private fun observerViewModel(){
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -231,24 +220,12 @@ class MainActivity : AppCompatActivity() {
 
                 launch {
                     repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        combine(
-                            obdViewModel.obdData,
-                            thresholdViewModel.thresholdData
-                        ) { data, threshold ->
-                            Pair(data, threshold)
-                        }.collect { (data, threshold) ->
-
-                            val rpm = data["Rpm"]?.toIntOrNull()
-                            val speed = data["Speed"]?.toIntOrNull()
-                            val throttle = data["Throttle"]?.toIntOrNull()
-                            val temp = data["Temp"]?.toIntOrNull()
-                            val maf = data["Maf"]?.toDoubleOrNull()
-
-                            binding.tvDataRpm.text = rpm?.toString() ?: "-"
-                            binding.tvDataSpeed.text = speed?.toString() ?: "-"
-                            binding.tvDataThrottle.text = throttle?.toString() ?: "-"
-                            binding.tvDataTemp.text = temp?.toString() ?: "-"
-                            binding.tvDataMaf.text = maf?.toString() ?: "-"
+                        obdViewModel.obdData.collect { data ->
+                            binding.tvDataRpm.text = data["Rpm"]?.toIntOrNull()?.toString() ?: "-"
+                            binding.tvDataSpeed.text = data["Speed"]?.toIntOrNull()?.toString() ?: "-"
+                            binding.tvDataThrottle.text = data["Throttle"]?.toIntOrNull()?.toString() ?: "-"
+                            binding.tvDataTemp.text = data["Temp"]?.toIntOrNull()?.toString() ?: "-"
+                            binding.tvDataMaf.text = data["Maf"]?.toDoubleOrNull()?.toString() ?: "-"
                         }
                     }
                 }
@@ -358,8 +335,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-    private val enableBluetoothLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
+    private val enableBluetoothLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { res ->
         if (res.resultCode == RESULT_OK) {
             startDiscovery()
         } else {
@@ -541,34 +519,6 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-//    private fun testObdConnection() {
-//
-//        val input = bluetoothViewModel.bluetoothSocket.value?.inputStream
-//        val output = bluetoothViewModel.bluetoothSocket.value?.outputStream
-//
-//        if (input != null && output != null) {
-////            obdViewModel.startReading(input, output)
-//            obdViewModel.startReading(this@MainActivity, input, output)
-//        }
-//
-//
-//        val service = Intent(this@MainActivity, OBDForegroundService::class.java)
-//        obdViewModel.changeServiceIntent(service)
-////        startService(obdViewModel.serviceIntent.value)
-//        lifecycleScope.launch {
-////            val oo = obdViewModel.readSuccess.first()
-//            obdViewModel.readSuccess.collectLatest { success ->
-//                if (success == false && obdViewModel.serviceIntent.value != null){
-//                    makeToast(this@MainActivity, "kode read success untuk menghentikan notif")
-//                    stopService(obdViewModel.serviceIntent.value)
-//                }
-//                else if (success == true){
-//                    startService(obdViewModel.serviceIntent.value)
-//                }
-//            }
-//        }
-//    }
-
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
@@ -618,30 +568,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Modify your connection logic:
-    private fun attemptOBDConnection(address: String) {
-        if (!bluetoothAdapter.isEnabled) {
-            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            enableBluetoothLauncher.launch(enableBtIntent)
-            // Connection will be re-attempted by the launcher's result or user action
-            return
-        }
-
-        // 1. Ensure the service is started so it can react to bluetoothViewModel.isConnected
-        startAndBindOBDService() // Start and bind if not already
-
-        // 2. Initiate the Bluetooth connection (this will update bluetoothViewModel.isConnected)
-        // This part of your code seems to be in bluetoothViewModel.connect(device)
-        // or a similar method that eventually updates bluetoothViewModel.isConnected
-        Log.d("MainActivity", "Attempting to connect to device: $address")
-        val device = bluetoothAdapter.getRemoteDevice(address) // Get the BluetoothDevice
-//        bluetoothViewModel.connect(device) // This should trigger the connection
-        // and update isConnected Flow in BluetoothViewModel
-
-        // The OBDForegroundService will observe bluetoothViewModel.isConnected
-        // and call startForeground() itself when isConnected becomes true.
-    }
-
     private fun startAndBindOBDService() {
         val serviceIntent = Intent(this, OBDForegroundService::class.java)
         // Start the service
@@ -650,15 +576,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             startService(serviceIntent)
         }
-        // Bind to the service
-//        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
     private fun stopAndUnbindOBDService() {
-//        if (isServiceBound) {
-//            unbindService(serviceConnection)
-//            isServiceBound = false
-//        }
         val serviceIntent = Intent(this, OBDForegroundService::class.java)
         stopService(serviceIntent) // This will eventually call onDestroy in the service
         Log.d("MainActivity", "OBD Service stopped and unbound")
@@ -672,9 +592,6 @@ class MainActivity : AppCompatActivity() {
         }
         lifecycleScope.launch {
             obdViewModel.updateBluetoothConnection(false)
-            mainViewModel.currentStreamId.firstOrNull()?.let {
-                mainViewModel.soundPool.stop(it)
-            }
             mainViewModel.updateCurrentStreamId(null)
             mainViewModel.updateIsPlaying(false)
         }

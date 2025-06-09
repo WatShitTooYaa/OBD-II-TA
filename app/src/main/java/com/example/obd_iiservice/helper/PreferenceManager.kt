@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.obd_iiservice.setting.MQTTConfig
@@ -32,6 +33,8 @@ class PreferenceManager @Inject constructor(
         val MQTT_AUTO_RECONNECT = booleanPreferencesKey("mqtt_auto_reconnect")
         val MQTT_PORT_TYPE = stringPreferencesKey("mqtt_port_type")
 
+        val DELAY_RESPONSE = longPreferencesKey("delay_response")
+
         //untuk meyimpan threshold
         val RPM_THRESHOLD = intPreferencesKey("rpm_threshold")
         val SPEED_THRESHOLD = intPreferencesKey("speed_threshold")
@@ -51,6 +54,9 @@ class PreferenceManager @Inject constructor(
     val mqttTopic: Flow<String?> = context.dataStore.data.map { it[MQTT_TOPIC] }
     val mqttAutoRecon: Flow<Boolean> = context.dataStore.data.map { it[MQTT_AUTO_RECONNECT] == true }
     val mqttPortType: Flow<String> = context.dataStore.data.map { it[MQTT_PORT_TYPE] ?: "tcp" }
+
+    //delay get data
+    val delayResponse: Flow<Long> = context.dataStore.data.map { it[DELAY_RESPONSE] ?: 100 }
 
     //threshold
     val rpmThreshold : Flow<Int> = context.dataStore.data.map { it[RPM_THRESHOLD] ?: 0 }
@@ -91,6 +97,11 @@ class PreferenceManager @Inject constructor(
 
     suspend fun saveMqttPortType(type: String) {
         context.dataStore.edit { it[MQTT_PORT_TYPE] = type }
+    }
+
+    //fungsi menyimpan data delay
+    suspend fun saveDelayResponse(delay : Long) {
+        context.dataStore.edit { it[DELAY_RESPONSE] = delay }
     }
 
     //fungsi menyimpan data threshold
