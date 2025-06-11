@@ -85,7 +85,7 @@ class HomeFragment : Fragment() {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        initUI()
+//        initUI()
 
 //        val textView: TextView = binding.
 //
@@ -102,98 +102,98 @@ class HomeFragment : Fragment() {
     }
 
 
-    private fun initUI() {
-        rvBluetooth = binding.rvListDevices
-        rvBluetooth.setHasFixedSize(true)
-        rvOBD = binding.rvObd
-        rvOBD.setHasFixedSize(true)
-        showRecycleView()
-
-        binding.btnScanConnectBluetooth.apply {
-            when (bluetoothAdapter.isEnabled) {
-                true -> {
-                    text = "Scan Bluetooth"
-                    setOnClickListener {
-
-                    }
-                }
-
-                false -> {
-                    text = "Enable Bluetooth"
-                }
-            }
-        }
-//        binding.btnScanIfAutoReconFalse.setOnClickListener {
-//            checkAndRequestPermissions()
-//        }
+//    private fun initUI() {
+//        rvBluetooth = binding.rvListDevices
+//        rvBluetooth.setHasFixedSize(true)
+//        rvOBD = binding.rvObd
+//        rvOBD.setHasFixedSize(true)
+//        showRecycleView()
 //
-//        binding.btnScanIfAutoReconTrue.setOnClickListener {
-//            checkAndRequestPermissions()
-//        }
+//        binding.btnScanConnectBluetooth.apply {
+//            when (bluetoothAdapter.isEnabled) {
+//                true -> {
+//                    text = "Scan Bluetooth"
+//                    setOnClickListener {
 //
-//        binding.btnConnectIfAutoReconFalse.setOnClickListener {
-//            lifecycleScope.launch {
-//                settingViewModel.isInitialized
-//                    .filter { it } // hanya lanjut kalau true
-//                    .first()
-//                val canConnect = settingViewModel.checkDataForConnecting()
-//                val address = settingViewModel.bluetoothAddress.first()
-////                makeToast(this@MainActivity, "top : $topic, p: $port, ho: $host, adress : $address")
-//                if (!bluetoothAdapter.isEnabled) {
-//                    val enableBtnIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-//                    enableBluetoothLauncher.launch(enableBtnIntent)
-//                } else {
-//                    if (canConnect && address != null){
-//                        connectToDevice(address)
-//                    } else {
-//                        makeToast(this@MainActivity, "topic atau port tidak boleh kosong")
 //                    }
 //                }
-//            }
-//        }
 //
-//        binding.btnDisconnectIfAutoReconFalse.setOnClickListener {
-//            disconnectOrClose()
-//        }
-
-//        binding.topAppBar.setOnMenuItemClickListener { menuItem ->
-//            when(menuItem.itemId) {
-//                R.id.nav_settings -> {
-//                    val intent = Intent(this, SettingActivity::class.java)
-//                    startActivity(intent)
-//                    true
+//                false -> {
+//                    text = "Enable Bluetooth"
 //                }
-//                R.id.nav_log -> {
-//                    val intent = Intent(this, LogViewActivity::class.java)
-//                    startActivity(intent)
-//                    true
-//                }
-//                R.id.nav_dtc -> {
-//                    val intent = Intent(this, DTCActivity::class.java)
-//                    startActivity(intent)
-//                    true
-//                }
-//                R.id.nav_treshold -> {
-//                    val intent = Intent(this, ThresholdActivity::class.java)
-//                    startActivity(intent)
-//                    true
-//                }
-//                R.id.nav_quit -> {
-//                    disconnectOrClose()
-//                    finish()
-//                    true
-//                }
-//                else -> false
 //            }
 //        }
-
-//        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-//            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-//            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-//            insets
-//        }
-
-    }
+////        binding.btnScanIfAutoReconFalse.setOnClickListener {
+////            checkAndRequestPermissions()
+////        }
+////
+////        binding.btnScanIfAutoReconTrue.setOnClickListener {
+////            checkAndRequestPermissions()
+////        }
+////
+////        binding.btnConnectIfAutoReconFalse.setOnClickListener {
+////            lifecycleScope.launch {
+////                settingViewModel.isInitialized
+////                    .filter { it } // hanya lanjut kalau true
+////                    .first()
+////                val canConnect = settingViewModel.checkDataForConnecting()
+////                val address = settingViewModel.bluetoothAddress.first()
+//////                makeToast(this@MainActivity, "top : $topic, p: $port, ho: $host, adress : $address")
+////                if (!bluetoothAdapter.isEnabled) {
+////                    val enableBtnIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+////                    enableBluetoothLauncher.launch(enableBtnIntent)
+////                } else {
+////                    if (canConnect && address != null){
+////                        connectToDevice(address)
+////                    } else {
+////                        makeToast(this@MainActivity, "topic atau port tidak boleh kosong")
+////                    }
+////                }
+////            }
+////        }
+////
+////        binding.btnDisconnectIfAutoReconFalse.setOnClickListener {
+////            disconnectOrClose()
+////        }
+//
+////        binding.topAppBar.setOnMenuItemClickListener { menuItem ->
+////            when(menuItem.itemId) {
+////                R.id.nav_settings -> {
+////                    val intent = Intent(this, SettingActivity::class.java)
+////                    startActivity(intent)
+////                    true
+////                }
+////                R.id.nav_log -> {
+////                    val intent = Intent(this, LogViewActivity::class.java)
+////                    startActivity(intent)
+////                    true
+////                }
+////                R.id.nav_dtc -> {
+////                    val intent = Intent(this, DTCActivity::class.java)
+////                    startActivity(intent)
+////                    true
+////                }
+////                R.id.nav_treshold -> {
+////                    val intent = Intent(this, ThresholdActivity::class.java)
+////                    startActivity(intent)
+////                    true
+////                }
+////                R.id.nav_quit -> {
+////                    disconnectOrClose()
+////                    finish()
+////                    true
+////                }
+////                else -> false
+////            }
+////        }
+//
+////        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+////            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+////            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+////            insets
+////        }
+//
+//    }
 
 //    private fun observerViewModel(){
 //        lifecycleScope.launch {
@@ -481,7 +481,7 @@ class HomeFragment : Fragment() {
             address = address,
             onSuccess = {
                 val device = bluetoothViewModel.bluetoothSocket.value?.remoteDevice
-                binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
+//                binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
                 lifecycleScope.launch {
                     settingViewModel.saveBluetoothAddress(address)
                     obdViewModel.updateBluetoothConnection(true)
@@ -521,7 +521,7 @@ class HomeFragment : Fragment() {
 
                 if (success) {
                     val device = bluetoothViewModel.bluetoothSocket.value?.remoteDevice
-                    binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
+//                    binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
                     Toast.makeText(activity, "Connected to ${device?.name}", Toast.LENGTH_SHORT).show()
                     activity?.let {
                         saveLogToFile(

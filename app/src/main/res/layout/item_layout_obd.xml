@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    android:background="@drawable/background_adaptive_card"
+    android:elevation="4dp"
+    android:padding="16dp">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintDimensionRatio="3:2"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <com.imsalman.gaugelibrary.Gauge
+                android:id="@+id/gauge1"
+                android:layout_width="200dp"
+                android:layout_height="300dp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:gaugeEndValue="1000"
+                app:gaugePointEndColor="#00ff00"
+                app:gaugePointSize="10"
+                app:gaugePointStartColor="#4CAF50"
+                app:gaugeStartAngle="180"
+                app:gaugeStartValue="0"
+                app:gaugeStrokeCap="ROUND"
+                app:gaugeStrokeColor="#FF367A"
+                app:gaugeStrokeWidth="15dp"
+                app:gaugeSweepAngle="180"
+                tools:background="#44000000"/>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.cardview.widget.CardView>
+</androidx.constraintlayout.widget.ConstraintLayout>
