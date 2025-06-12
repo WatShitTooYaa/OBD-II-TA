@@ -11,7 +11,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.obd_iiservice.R
-import com.example.obd_iiservice.bluetooth.BluetoothViewModel
+import com.example.obd_iiservice.setting.ui.bluetooth.BluetoothViewModel
 import com.example.obd_iiservice.helper.MqttHelper
 import com.example.obd_iiservice.helper.PreferenceManager
 import com.example.obd_iiservice.helper.saveLogToFile

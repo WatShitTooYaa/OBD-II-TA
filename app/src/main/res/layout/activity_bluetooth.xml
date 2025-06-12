@@ -5,6 +5,122 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
     tools:context=".setting.ui.bluetooth.BluetoothActivity">
+
+<!--    layout button   -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/cl_container_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Scan Bluetooth Devices"
+        android:layout_marginTop="5dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!--        Layout When Auto Reconnect False-->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_container_button_ifAutoReconFalse"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <com.example.obd_iiservice.ButtonConnect
+                android:id="@+id/btn_scan_ifAutoReconFalse"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="50dp"
+                android:layout_marginVertical="10dp"
+                android:text="Scan Bluetooth Devices"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <com.example.obd_iiservice.ButtonConnect
+                android:id="@+id/btn_connect_ifAutoReconFalse"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="50dp"
+                android:layout_marginVertical="10dp"
+                android:visibility="gone"
+                android:text="Connect"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"/>
+
+            <com.example.obd_iiservice.ButtonConnect
+                android:id="@+id/btn_disconnect_ifAutoReconFalse"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="50dp"
+                android:layout_marginVertical="10dp"
+                android:visibility="gone"
+                android:text="Disconnect"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        <!--        Layout When Auto Reconnect True -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_container_button_ifAutoReconTrue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <com.example.obd_iiservice.ButtonConnect
+                android:id="@+id/btn_scan_ifAutoReconTrue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="50dp"
+                android:layout_marginVertical="10dp"
+                android:text="Scan Bluetooth Devices"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <com.example.obd_iiservice.ButtonConnect
+                android:id="@+id/btn_connect_ifAutoReconTrue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="50dp"
+                android:layout_marginVertical="10dp"
+                android:enabled="false"
+                android:visibility="gone"
+                android:text="Connected"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"/>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+<!--    layout rv    -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_list_devices"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginHorizontal="10dp"
+        android:layout_marginVertical="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:listitem="@layout/item_device"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cl_container_button" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

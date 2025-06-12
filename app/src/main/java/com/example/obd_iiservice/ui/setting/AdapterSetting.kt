@@ -28,7 +28,9 @@ class AdapterSetting(
             tvSettingLabel.text = items.label
             tvSettingDescription.text = items.description
         }
-
+        holder.itemView.setOnClickListener {
+            onItemClick(items)
+        }
     }
 
     override fun getItemCount(): Int {

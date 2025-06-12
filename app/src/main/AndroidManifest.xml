@@ -37,13 +37,7 @@
             android:exported="false" />
         <activity
             android:name=".setting.ui.bluetooth.BluetoothActivity"
-            android:exported="false" /> <!-- <activity -->
-        <!-- android:name=".home.HomeActivity" -->
-        <!-- android:exported="false" /> -->
-        <!-- <activity -->
-        <!-- android:name=".test.botom.botom" -->
-        <!-- android:exported="false" -->
-        <!-- android:label="@string/title_activity_botom" /> -->
+            android:exported="false" />
         <activity
             android:name=".dtc.DTCActivity"
             android:exported="false" />
@@ -68,7 +62,7 @@
             android:exported="false" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".home.HomeActivity"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -78,4 +72,11 @@
         </activity>
     </application>
 
+    <!-- <activity -->
+    <!-- android:name=".home.HomeActivity" -->
+    <!-- android:exported="false" /> -->
+    <!-- <activity -->
+    <!-- android:name=".test.botom.botom" -->
+    <!-- android:exported="false" -->
+    <!-- android:label="@string/title_activity_botom" /> -->
 </manifest>

@@ -1,9 +1,8 @@
-package com.example.obd_iiservice
+package com.example.obd_iiservice.setting.ui.bluetooth
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -15,11 +14,9 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
@@ -29,21 +26,18 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.obd_iiservice.R
 import com.example.obd_iiservice.bluetooth.BluetoothDeviceAdapter
 import com.example.obd_iiservice.bluetooth.BluetoothDeviceItem
-import com.example.obd_iiservice.setting.ui.bluetooth.BluetoothViewModel
 import com.example.obd_iiservice.bluetooth.ObserveConnectionBluetooth
-import com.example.obd_iiservice.databinding.ActivityMainBinding
+import com.example.obd_iiservice.databinding.ActivityBluetoothBinding
 import com.example.obd_iiservice.dtc.DTCActivity
 import com.example.obd_iiservice.helper.makeToast
 import com.example.obd_iiservice.helper.saveLogToFile
 import com.example.obd_iiservice.log.LogViewActivity
 import com.example.obd_iiservice.obd.OBDForegroundService
-import com.example.obd_iiservice.obd.OBDViewModel
 import com.example.obd_iiservice.setting.SettingActivity
-import com.example.obd_iiservice.setting.SettingViewModel
 import com.example.obd_iiservice.threshold.ThresholdActivity
-import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
@@ -52,70 +46,32 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@AndroidEntryPoint
-class MainActivity : AppCompatActivity() {
-    private lateinit var binding : ActivityMainBinding
+class BluetoothActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityBluetoothBinding
     private lateinit var bluetoothDeviceAdapter: BluetoothDeviceAdapter
     private lateinit var rvBluetooth: RecyclerView
     private val listBluetoothDevice = mutableListOf<BluetoothDeviceItem>()
     private val bluetoothViewModel : BluetoothViewModel by viewModels()
-    private val obdViewModel : OBDViewModel by viewModels()
-    private val settingViewModel: SettingViewModel by viewModels()
-    private val mainViewModel : MainViewModel by viewModels()
 
     @Inject
     lateinit var bluetoothAdapter: BluetoothAdapter
 
-
     private val REQUEST_PERMISSION = 2
     private val PERMISSION_REQUEST_BLUETOOTH = 1
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        binding = ActivityMainBinding.inflate(layoutInflater)
 
+        binding = ActivityBluetoothBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-//        rvBluetooth = binding.rvListDevices
-//        rvBluetooth.setHasFixedSize(true)
-//        showRecycleView()
 
-//        serviceIntent = obdViewModel.serviceIntent.value
-
-        onBackPressedDispatcher.addCallback(object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-//                Toast.makeText(this@MainActivity, "menenak tombol kembali", Toast.LENGTH_LONG).show()
-                AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Keluar")
-                    .setMessage("Apakah anda ingin keluar dari aplikasi?")
-                    .setPositiveButton("Ya") { _,_ ->
-                        obdViewModel.stopReading()
-                        lifecycleScope.launch {
-//                            if (bluetoothViewModel.isReceiverRegistered.first() == true){
-//                                unregisterReceiver(receiver)
-//                            }
-                            unRegReceiver()
-                        }
-                        bluetoothViewModel.disconnect()
-                        finish()
-                    }
-                    .setNegativeButton("Tidak") { dialog, _ -> dialog.dismiss() }
-                    .create()
-                    .show()
-            }
-        })
-
-//        val bluetoothManager = this.getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
-//        bluetoothAdapter = bluetoothManager.adapter
-        if (bluetoothAdapter == null) {
-            Toast.makeText(this, "Not supported Bluetooth", Toast.LENGTH_LONG).show()
-            finish()
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
         }
-
-        initUI()
-        observerViewModel()
     }
 
     private fun initUI() {
@@ -597,21 +553,5 @@ class MainActivity : AppCompatActivity() {
         }
         bluetoothViewModel.disconnect()
         listBluetoothDevice.clear()
-    }
-
-    override fun onStop() {
-        super.onStop()
-
-        lifecycleScope.launch {
-//            unRegReceiver()
-            bluetoothViewModel.updateReconnectingJob(null)
-        }
-    }
-
-    suspend fun unRegReceiver(){
-        if (bluetoothViewModel.isReceiverRegistered.first() == true){
-            unregisterReceiver(receiver)
-            bluetoothViewModel.changeIsReceiverRegistered(false)
-        }
     }
 }

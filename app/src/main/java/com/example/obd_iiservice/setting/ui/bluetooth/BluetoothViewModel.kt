@@ -1,10 +1,11 @@
-package com.example.obd_iiservice.bluetooth
+package com.example.obd_iiservice.setting.ui.bluetooth
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothSocket
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.obd_iiservice.bluetooth.BluetoothRepository
 import com.example.obd_iiservice.obd.OBDRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +14,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext

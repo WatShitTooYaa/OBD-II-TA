@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.obd_iiservice.R
 import com.example.obd_iiservice.setting.ui.bluetooth.BluetoothActivity
 import com.example.obd_iiservice.databinding.FragmentSettingBinding
+import com.example.obd_iiservice.setting.ui.mqtt.MqttActivity
 import com.example.obd_iiservice.threshold.ThresholdActivity
 import com.example.obd_iiservice.ui.decoration.RecyclerViewItemDecoration
 
@@ -66,24 +67,25 @@ class SettingFragment : Fragment() {
                 BluetoothActivity::class.java
             ),
             SettingItem(
-                R.drawable.icon_throttle,
+                R.drawable.threshold_icon,
                 "Threshold",
                 "Limit data",
                 ThresholdActivity::class.java
             ),
-//            SettingItem(
-//                R.drawable.port,
-//                "Bluetooth",
-//                "Connection",
-//
-//            ),
+            SettingItem(
+                R.drawable.port,
+                "MQTT",
+                "Setting connection MQTT",
+                MqttActivity::class.java
+            ),
         )
         settingAdapter = AdapterSetting(listSetting) { clickedSetting ->
             clickedSetting.targetActivity.let { activityClass ->
-                val intent = Intent(activity, activityClass::class.java)
+                val intent = Intent(activity, activityClass)
                 startActivity(intent)
             }
         }
+
         rvSetting.adapter = settingAdapter
         rvSetting.addItemDecoration(
 //            DividerItemDecoration(

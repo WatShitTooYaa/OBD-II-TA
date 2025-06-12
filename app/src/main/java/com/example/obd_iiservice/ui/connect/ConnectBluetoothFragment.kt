@@ -28,15 +28,12 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.example.obd_iiservice.MainViewModel
-import com.example.obd_iiservice.R
 import com.example.obd_iiservice.bluetooth.BluetoothDeviceAdapter
 import com.example.obd_iiservice.bluetooth.BluetoothDeviceItem
-import com.example.obd_iiservice.bluetooth.BluetoothViewModel
+import com.example.obd_iiservice.setting.ui.bluetooth.BluetoothViewModel
 import com.example.obd_iiservice.databinding.FragmentConnectBluetoothBinding
-import com.example.obd_iiservice.databinding.FragmentHomeBinding
 import com.example.obd_iiservice.helper.saveLogToFile
 import com.example.obd_iiservice.obd.OBDForegroundService
-import com.example.obd_iiservice.obd.OBDItem
 import com.example.obd_iiservice.obd.OBDViewModel
 import com.example.obd_iiservice.setting.SettingViewModel
 import kotlinx.coroutines.Job
