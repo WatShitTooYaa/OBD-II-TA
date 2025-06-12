@@ -49,7 +49,7 @@ class OBDViewModel @Inject constructor(
     private var _isServiceBound = MutableStateFlow<Boolean>(false)
     val isServiceBound : StateFlow<Boolean> = _isServiceBound
 
-    private var _obdService= MutableStateFlow<OBDForegroundService?>(null)
+    private var _obdService = MutableStateFlow<OBDForegroundService?>(null)
     val obdService : StateFlow<OBDForegroundService?> = _obdService
 
 //    private var _serviceConnection = MutableStateFlow<ServiceConnection?>(null)

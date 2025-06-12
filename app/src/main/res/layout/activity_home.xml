@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:background="@color/green_bg">
+    android:background="#d6d6d6">
 <!--    android:paddingTop="?attr/actionBarSize"-->
 
     <fragment

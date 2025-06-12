@@ -85,7 +85,7 @@ class OBDRepositoryImpl @Inject constructor(
     ): Map<String, String> {
         val data = mutableMapOf<String, String>()
         for (pid in pidList) {
-            if (isBluetoothConnected.first() == false) break
+            if (!isBluetoothConnected.first()) break
             withContext(Dispatchers.IO) {
                 try {
                     output.write("$pid\r".toByteArray())

@@ -4,16 +4,19 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.obd_iiservice.R
+import com.example.obd_iiservice.databinding.ItemLayoutObdBinding
 import com.example.obd_iiservice.databinding.ItemObdDataBinding
 
 class OBDAdapter(
-    private val list: MutableList<OBDItem>
+    private val list: MutableList<OBDItem>,
+    private val itemHeight: Int
 ) : RecyclerView.Adapter<OBDAdapter.ListViewHolder>() {
     override fun onCreateViewHolder(
         parent: ViewGroup,
         viewType: Int
     ): ListViewHolder {
-        val binding = ItemObdDataBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding = ItemLayoutObdBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        binding.root.layoutParams.height = itemHeight
         return ListViewHolder(binding)
     }
 
@@ -22,16 +25,10 @@ class OBDAdapter(
         position: Int
     ) {
         val items = list[position]
-        val circleStatus = if (items.isNormal){
-            R.drawable.circle_status_normal
-        } else{
-            R.drawable.circle_status_not_normal
-        }
         holder.binding.apply {
-            tvItemDataLabel.text = items.label
-            iconObd.setImageResource(items.iconResId)
-            tvItemDataValue.text = items.value
-            viewStatusCircle.setBackgroundColor(circleStatus)
+            tvItemObdUnit.text = items.unit
+            tvItemObdType.text = items.label
+            tvItemObdValue.text = items.value
         }
     }
 
@@ -39,13 +36,12 @@ class OBDAdapter(
         return list.size
     }
 
-    class ListViewHolder(var binding: ItemObdDataBinding) : RecyclerView.ViewHolder(binding.root)
-
-    // Optional: untuk update nilai dinamis jika dibutuhkan
-    fun updateItemValue(position: Int, newValue: String, isNormal: Boolean) {
-        (list as? MutableList)?.let {
-            it[position] = it[position].copy(value = newValue, isNormal = isNormal)
-            notifyItemChanged(position)
-        }
+    class ListViewHolder(var binding: ItemLayoutObdBinding) : RecyclerView.ViewHolder(binding.root)
+    // Fungsi untuk mengupdate data di adapter
+    fun updateData(newList: List<OBDItem>) {
+        list.clear()
+        list.addAll(newList)
+        notifyDataSetChanged() // Beritahu RecyclerView untuk menggambar ulang semua item
     }
+
 }
