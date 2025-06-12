@@ -5,44 +5,78 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    android:background="@drawable/background_adaptive_card"
-    android:elevation="4dp"
-    android:padding="16dp">
+    android:background="@drawable/background_adaptive_card">
 
     <androidx.cardview.widget.CardView
+        android:id="@+id/cardView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        app:layout_constraintDimensionRatio="3:2"
+        app:cardBackgroundColor="@color/green_bg"
+        app:layout_constraintDimensionRatio="2:3"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <!--        <androidx.constraintlayout.widget.ConstraintLayout-->
+        <!--            android:layout_width="match_parent"-->
+        <!--            android:layout_height="match_parent"-->
+        <!--            android:layout_margin="10dp"-->
+        <!--            android:layout_gravity="center"-->
+        <!--            android:background="@color/green_second"-->
+        <!--            android:padding="10dp">-->
+
+        <com.imsalman.gaugelibrary.Gauge
+            android:id="@+id/gauge1"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
-            <com.imsalman.gaugelibrary.Gauge
-                android:id="@+id/gauge1"
-                android:layout_width="200dp"
-                android:layout_height="300dp"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:gaugeEndValue="1000"
-                app:gaugePointEndColor="#00ff00"
-                app:gaugePointSize="10"
-                app:gaugePointStartColor="#4CAF50"
-                app:gaugeStartAngle="180"
-                app:gaugeStartValue="0"
-                app:gaugeStrokeCap="ROUND"
-                app:gaugeStrokeColor="#FF367A"
-                app:gaugeStrokeWidth="15dp"
-                app:gaugeSweepAngle="180"
-                tools:background="#44000000"/>
-        </androidx.constraintlayout.widget.ConstraintLayout>
+            android:layout_height="match_parent"
+            android:padding="10dp"
+            android:layout_margin="20dp"
+            app:gaugeEndValue="1000"
+            app:gaugePointEndColor="#00ff00"
+            app:gaugePointSize="10"
+            app:gaugePointStartColor="#4CAF50"
+            app:gaugeStartAngle="145"
+            app:gaugeStartValue="0"
+            app:gaugeStrokeCap="ROUND"
+            app:gaugeStrokeColor="#FF367A"
+            app:gaugeStrokeWidth="5dp"
+            app:gaugeSweepAngle="250"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+
+        <!--                tools:background="#44000000" -->
+        <!--        </androidx.constraintlayout.widget.ConstraintLayout>-->
     </androidx.cardview.widget.CardView>
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.4" />
+
+    <TextView
+        android:id="@+id/tv_item_obd_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:text="3000"
+        android:elevation="6dp"
+        app:layout_constraintEnd_toEndOf="@+id/cardView"
+        app:layout_constraintStart_toStartOf="@id/cardView"
+        app:layout_constraintTop_toTopOf="@+id/guideline2" />
+
+    <TextView
+        android:id="@+id/tv_item_obd_unit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:elevation="6dp"
+        android:text="TextView"
+        app:layout_constraintEnd_toEndOf="@+id/tv_item_obd_value"
+        app:layout_constraintStart_toStartOf="@+id/tv_item_obd_value"
+        app:layout_constraintTop_toBottomOf="@+id/tv_item_obd_value" />
 </androidx.constraintlayout.widget.ConstraintLayout>
