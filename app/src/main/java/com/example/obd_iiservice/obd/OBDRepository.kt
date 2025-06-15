@@ -74,6 +74,7 @@ interface OBDRepository {
     // Fungsi untuk mengubah state mqtt
     suspend fun updateMQTTJobState(mqttJobState: MQTTJobState)
 
+    suspend fun checkDataForMQTTConnection() : Boolean
 
     // StateFlow yang bisa diamati oleh UI
     val serviceState: StateFlow<ServiceState>
@@ -92,7 +93,7 @@ interface OBDRepository {
 }
 
 class OBDRepositoryImpl @Inject constructor(
-    preferenceManager: PreferenceManager,
+    private val preferenceManager: PreferenceManager,
     @ApplicationScope private val applicationScope: CoroutineScope,
     @ApplicationContext private val context: Context
 ) : OBDRepository {
@@ -267,6 +268,10 @@ class OBDRepositoryImpl @Inject constructor(
 
     override suspend fun updateMQTTJobState(mqttJobState: MQTTJobState) {
         _mqttJobState.emit(mqttJobState)
+    }
+
+    override suspend fun checkDataForMQTTConnection(): Boolean {
+        return preferenceManager.checkDataForMQTTConnection()
     }
 
     override suspend fun updateDoingJob(doing: Boolean) {

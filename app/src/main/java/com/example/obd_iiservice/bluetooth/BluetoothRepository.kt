@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
 import android.util.Log
-import androidx.lifecycle.viewModelScope
 import com.example.obd_iiservice.app.ApplicationScope
 import com.example.obd_iiservice.helper.PreferenceManager
 import kotlinx.coroutines.CoroutineScope
@@ -24,7 +23,7 @@ interface BluetoothRepository {
     suspend fun updateBluetoothSocket(socket: BluetoothSocket?)
     suspend fun updateConnectionState(state: BluetoothConnectionState)
     suspend fun checkDataForConnecting() : Boolean
-    suspend fun saveBluetoothAddress(address: String)
+    suspend fun saveBluetoothAddress(address: String?)
     val bluetoothSocket: StateFlow<BluetoothSocket?>
     val connectionState : StateFlow<BluetoothConnectionState>
     val bluetoothAddress: StateFlow<String?>
@@ -38,7 +37,6 @@ class BluetoothRepositoryImpl @Inject constructor(
 
     private var _bluetoothAddress: StateFlow<String?> = preferenceManager.bluetoothAddress
         .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), null)
-
     override val bluetoothAddress: StateFlow<String?> = _bluetoothAddress
 
     private var _bluetoothSocket = MutableStateFlow<BluetoothSocket?>(null)
@@ -68,7 +66,7 @@ class BluetoothRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun saveBluetoothAddress(address: String) {
+    override suspend fun saveBluetoothAddress(address: String?) {
         applicationScope.launch { preferenceManager.saveBluetoothAddress(address) }
     }
 
@@ -81,7 +79,7 @@ class BluetoothRepositoryImpl @Inject constructor(
     }
 
     override suspend fun checkDataForConnecting() : Boolean {
-        return preferenceManager.checkDataForConnecting()
+        return preferenceManager.checkDataForMQTTConnection()
     }
 
 }

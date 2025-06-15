@@ -67,8 +67,14 @@ class PreferenceManager @Inject constructor(
 
 
     //fungsi menyimpan data bluetooth dan mqtt
-    suspend fun saveBluetoothAddress (address: String) {
-        context.dataStore.edit { it[BLUETOOTH_ADDRESS] = address}
+    suspend fun saveBluetoothAddress (address: String?) {
+        context.dataStore.edit { preferences ->
+            if (address == null) {
+                preferences.remove(BLUETOOTH_ADDRESS)
+            } else {
+                preferences[BLUETOOTH_ADDRESS] = address
+            }
+        }
     }
 
     suspend fun saveMqttHost(host: String) {
@@ -157,7 +163,7 @@ class PreferenceManager @Inject constructor(
         context.dataStore.edit { it.clear() }
     }
 
-    suspend fun checkDataForConnecting() : Boolean {
+    suspend fun checkDataForMQTTConnection() : Boolean {
         val topic = mqttTopic.first()
         val host = mqttHost.first()
         val port = mqttPort.first()

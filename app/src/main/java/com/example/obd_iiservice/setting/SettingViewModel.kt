@@ -126,7 +126,7 @@ class SettingViewModel @Inject constructor(
     }
 
     suspend fun checkDataForConnecting() : Boolean {
-        return preferenceManager.checkDataForConnecting()
+        return preferenceManager.checkDataForMQTTConnection()
     }
 
     fun clearData() {

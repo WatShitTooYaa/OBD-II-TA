@@ -17,11 +17,13 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresPermission
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
@@ -48,6 +50,7 @@ import com.example.obd_iiservice.threshold.ThresholdActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -101,45 +104,70 @@ class BluetoothActivity : AppCompatActivity() {
     // 2. Metode ini dipanggil setiap kali menu akan ditampilkan.
     //    Ini adalah tempat terbaik untuk mengubah ikon secara dinamis.
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-//        val connectionItem = menu.findItem(R.id.action_connection_status)
+        val isAuto = bluetoothViewModel.isAutoRecon.value
+        val reconnectItem = menu.findItem(R.id.action_reconnect_status)
+
+        val actionView = reconnectItem?.actionView
+
+        val iconBackground = actionView?.findViewById<ImageView>(R.id.icon_background)
 
         // Ambil status koneksi saat ini (misalnya dari ViewModel)
-//        val isConnected = viewModel.isConnected.value
 //
-//        if (isConnected) {
-//            connectionItem?.setIcon(R.drawable.ic_bluetooth_connected)
-//        } else {
-//            connectionItem?.setIcon(R.drawable.ic_bluetooth_disconnected)
-//        }
+        if (isAuto) {
+            iconBackground?.visibility = View.VISIBLE
+        } else {
+            iconBackground?.visibility = View.INVISIBLE
+        }
+
+        actionView?.setOnClickListener {
+            lifecycleScope.launch {
+                bluetoothViewModel.changeAutoReconnect(!isAuto)
+            }
+        }
         return super.onPrepareOptionsMenu(menu)
     }
 
     // 3. Tangani klik pada item menu (ikon Anda)
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-//            R.id.action_connection_status -> {
-//                // Logika saat ikon di-klik
-//                // Misalnya: buka dialog koneksi, coba sambungkan ulang, dll.
-//                viewModel.toggleConnection()
+//            R.id.action_reconnect_status -> {
+//                val isAuto = bluetoothViewModel.isAutoRecon.value
+//                lifecycleScope.launch {
+//                    bluetoothViewModel.changeAutoReconnect(!isAuto)
+//                }
 //                true
 //            }
-//            // Handle item menu lain jika ada
-//            R.id.action_settings -> {
-//                // Buka halaman setting
-//                true
-//            }
+            R.id.action_reset_status -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Reset")
+                    .setMessage("Reset connection?")
+                    .setPositiveButton("Yes") { _,_ ->
+                        lifecycleScope.launch {
+                            launch {
+                                bluetoothViewModel.saveBluetoothAddress(null)
+                            }
+                            launch {
+                                disconnectOrClose()
+                            }
+                        }
+                    }
+                    .setNegativeButton("No") { dialog, _ -> dialog.dismiss() }
+                    .create()
+                    .show()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
 
     private fun observeConnectionStatus() {
         lifecycleScope.launch {
-//            viewModel.isConnected.collect { isConnected ->
-//                // PENTING: Panggil invalidateOptionsMenu() setiap kali status berubah.
-//                // Ini akan memaksa Android untuk memanggil onPrepareOptionsMenu() lagi
-//                // dan menggambar ulang menu dengan ikon yang benar.
-//                invalidateOptionsMenu()
-//            }
+            bluetoothViewModel.isAutoRecon.collect { isAuto ->
+                // PENTING: Panggil invalidateOptionsMenu() setiap kali status berubah.
+                // Ini akan memaksa Android untuk memanggil onPrepareOptionsMenu() lagi
+                // dan menggambar ulang menu dengan ikon yang benar.
+                invalidateOptionsMenu()
+            }
         }
     }
 
@@ -200,18 +228,20 @@ class BluetoothActivity : AppCompatActivity() {
     private fun observerConnection(){
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-
                 launch {
-                    bluetoothViewModel.combineToReconnecting.collect { (reconnectingJob, address, connectionState, isAuto) ->
-                        binding.rvListDevices.visibility = View.VISIBLE // Selalu terlihat kecuali saat connected
+                    bluetoothViewModel.combineToReconnecting.collectLatest { (reconnectingJob, address, connectionState, isAuto) ->
+                        binding.rvListDevices.visibility = View.GONE // Selalu terlihat kecuali saat connected
 
                         when (connectionState) {
                             BluetoothConnectionState.IDLE -> {
                                 binding.btnScanConnect.visibility = View.VISIBLE
                                 binding.btnScanConnect.isEnabled = true
                                 if (address == null) {
+                                    Log.d("combine reconnect", "address null")
                                     binding.btnScanConnect.text = "Scan Devices..."
+                                    binding.rvListDevices.visibility = View.VISIBLE
                                 } else {
+                                    Log.d("combine reconnect", "address not null")
                                     binding.btnScanConnect.text = "Connect"
                                 }
                             }
@@ -228,7 +258,7 @@ class BluetoothActivity : AppCompatActivity() {
                                 binding.btnScanConnect.isEnabled = !isAuto // Hanya bisa disconnect jika tidak auto-reconnect
 
                                 // Sembunyikan daftar perangkat jika sudah terhubung
-                                // binding.rvListDevices.visibility = View.GONE
+//                                 binding.rvListDevices.visibility = View.GONE
                             }
 
                             BluetoothConnectionState.FAILED -> {
@@ -634,6 +664,9 @@ class BluetoothActivity : AppCompatActivity() {
         } else {
             startService(INTENT_SERVICE_STATE)
         }
+//        lifecycleScope.launch {
+//            bluetoothViewModel.updateServiceState(ServiceState.RUNNING)
+//        }
     }
 
     private fun stopAndUnbindOBDService() {
@@ -645,7 +678,9 @@ class BluetoothActivity : AppCompatActivity() {
 //        stopAndUnbindOBDService()
 //        obdViewModel.stopReading()
         if (bluetoothViewModel.serviceState.value == ServiceState.RUNNING) {
-            stopService(INTENT_SERVICE_STATE)
+//            stopService(INTENT_SERVICE_STATE)
+            stopAndUnbindOBDService()
+            Log.d("service", "service stop called.")
         }
         lifecycleScope.launch {
             bluetoothViewModel.updateConnectionState(BluetoothConnectionState.IDLE)

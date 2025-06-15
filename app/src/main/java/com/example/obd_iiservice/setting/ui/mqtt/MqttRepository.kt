@@ -136,7 +136,7 @@ class MqttRepositoryImpl @Inject constructor(
     }
 
     suspend fun checkDataForConnecting() : Boolean {
-        return preferenceManager.checkDataForConnecting()
+        return preferenceManager.checkDataForMQTTConnection()
     }
 
     override fun clearData() {

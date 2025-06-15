@@ -10,6 +10,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.obd_iiservice.R
+import com.example.obd_iiservice.app.ApplicationScope
 import com.example.obd_iiservice.bluetooth.BluetoothRepository
 import com.example.obd_iiservice.helper.MqttHelper
 import com.example.obd_iiservice.helper.PreferenceManager
@@ -38,52 +39,39 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class OBDForegroundService : Service() {
-//    private val _connectionState = MutableStateFlow(BluetoothConnectionState.IDLE)
-//    val connectionState: StateFlow<BluetoothConnectionState> = _connectionState
-
-
     private var readJob: Job? = null
     private var mqttJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    @Inject
+    @ApplicationScope
+    lateinit var applicationScope: CoroutineScope
 
     @Inject lateinit var bluetoothRepository: BluetoothRepository
     @Inject lateinit var obdRepository: OBDRepository
     @Inject lateinit var thresholdRepository: ThresholdRepository
     @Inject lateinit var mainRepository: MainRepository
     @Inject lateinit var preferenceManager: PreferenceManager
-//    @Inject lateinit var mqttHelper: MqttHelper
-//    @Inject lateinit var obdViewModel: OBDViewModel
+
     private lateinit var mqttHelper: MqttHelper
 
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForegroundNotification()
-
-//        val input = bluetoothRepository.bluetoothSocket.value?.inputStream
-//        val output = bluetoothRepository.bluetoothSocket.value?.outputStream
-
         readJob?.cancel() // cancel sebelumnya kalau ada
         mqttJob?.cancel()
-//        if (input != null && output != null) {
-//            readJob = startReading(applicationContext, input, output)
-//        }
         serviceScope.launch {
-            monitorThresholds()
+            launch {
+                monitorThresholds()
+            }
             launch {
                 obdRepository.updateMQTTJobState(MQTTJobState.FREE)
+            }
+            launch {
                 obdRepository.updateServiceState(ServiceState.RUNNING)
+            }
+            launch {
                 obdRepository.updateOBDJobState(OBDJobState.FREE)
-//                obdRepository.isDoingJob.collectLatest { isDoing ->
-//                    when(isDoing){
-//                        true -> {
-//                            readJob?.cancel()
-//                            mqttJob?.cancel()
-//                        }
-//                        false -> {
-//                            monitorThresholds()
-//                        }
-//                    }
-//                }
             }
             launch {
                 combine(
@@ -109,7 +97,15 @@ class OBDForegroundService : Service() {
                                 //check internet
                                 when (networkStatus) {
                                     NetworkStatus.Available -> {
-                                        sendToMQTT()
+                                        serviceScope.launch {
+                                            if (obdRepository.checkDataForMQTTConnection()){
+                                                sendToMQTT()
+                                            } else {
+                                                withContext(Dispatchers.Main){
+                                                    makeToast(this@OBDForegroundService, "MQTT not started, data null")
+                                                }
+                                            }
+                                        }
                                         withContext(Dispatchers.Main) {
                                             makeToast(this@OBDForegroundService, "Internet tersedia")
                                         }
@@ -147,36 +143,6 @@ class OBDForegroundService : Service() {
 
         return START_STICKY
     }
-
-    override fun onCreate() {
-        super.onCreate()
-
-
-//                obdRepository.networkStatus.collect { status ->
-//                    when (status) {
-//                        NetworkStatus.Available -> {
-//                            sendToMQTT()
-//                            withContext(Dispatchers.Main) {
-//                                makeToast(this@OBDForegroundService, "Internet tersedia")
-//                            }
-//                        }
-//                        NetworkStatus.Lost -> {
-//                            withContext(Dispatchers.Main) {
-////                                makeToast(this@OBDForegroundService, "Internet tersedia")
-//                                makeToast(this@OBDForegroundService, "Internet terputus")
-//                            }
-//                        }
-//                        NetworkStatus.Unavailable -> {
-//                            withContext(Dispatchers.Main) {
-////                                makeToast(this@OBDForegroundService, "Internet tersedia")
-//                                makeToast(this@OBDForegroundService, "Tidak ada jaringan")
-//                            }
-//                        }
-//                        else -> {}
-//                    }
-//                }
-    }
-
 
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -260,143 +226,6 @@ class OBDForegroundService : Service() {
         }
         return readJob
     }
-
-//    fun startReading(context: Context, input: InputStream, output: OutputStream): Job? {
-//        readJob?.cancel()
-//        readJob = serviceScope.launch {
-//            var allSuccess = true
-//
-//            // GUNAKAN FUNGSI DARI REPOSITORY UNTUK KONSISTENSI
-//            // Hapus fungsi readResponse() lokal
-//
-//            val initCmds = listOf("ATZ", "ATE0", "ATL0", "ATH1", "ATSP0", "0100") // Perhatikan ATH1!
-//
-//            for (cmd in initCmds) {
-//                // Gunakan sendCommand dari repository, namun kita perlu versi yang lebih baik
-//                // Untuk sekarang, kita modifikasi sementara di sini
-//                val response = withContext(Dispatchers.IO) {
-//                    output.write((cmd + "\r").toByteArray())
-//                    output.flush()
-//                    delay(400) // Beri waktu lebih untuk reset (ATZ) dan perintah lain
-//                    val buffer = ByteArray(1024)
-//                    val bytesRead = input.read(buffer)
-//                    if (bytesRead > 0) {
-//                        buffer.decodeToString(0, bytesRead)
-//                    } else {
-//                        "NO RESPONSE"
-//                    }
-//                }
-//
-//                Log.d("OBD_INIT", "Command: $cmd → Response: ${response.trim()}")
-//                saveLogToFile(context, "OBD_INIT", "CMD: $cmd", response.trim())
-//
-//                // Cek sederhana untuk error (bisa dibuat lebih baik)
-//                if (response.contains("?") || response.contains("ERROR", ignoreCase = true)) {
-//                    allSuccess = false
-//                    Log.e("OBD_INIT", "Initialization failed at command: $cmd")
-//                    break
-//                }
-//            }
-//
-//            if (!allSuccess) {
-//                Log.e("OBD", "Aborting due to initialization failure.")
-//                return@launch // Hentikan coroutine jika inisialisasi gagal
-//            }
-//
-//            delay(1000) // Beri jeda setelah inisialisasi sebelum membaca data sensor
-//
-//            while (isActive) {
-//                try {
-//                    val data = obdRepository.readOBDData(input, output, context)
-//                    if (data.isNotEmpty()) {
-//                        sendOBDData(data)
-//                        Log.d("Data_OBD", data.toString())
-//                    } else {
-//                        Log.w("Data_OBD", "Received empty data map from repository.")
-//                    }
-//                } catch (e: IOException) {
-//                    Log.e("OBD", "Error reading OBD data", e)
-//                    break
-//                }
-//
-//                // !! PENTING: AKTIFKAN KEMBALI DELAY INI !!
-//                delay(500) // Beri jeda 500ms (atau sesuai kebutuhan)
-//            }
-//        }
-//        return readJob
-//    }
-
-//    fun startReading(context: Context, input: InputStream, output: OutputStream) : Job? {
-//        readJob?.cancel()
-//        readJob = serviceScope.launch {
-//            val buffer = ByteArray(1024)
-//
-//            // Fungsi bantu untuk membaca respons dari ELM327 sampai tanda '>'
-//            suspend fun readResponse(): String {
-//                val response = StringBuilder()
-//
-//                val startTime = System.currentTimeMillis()
-//                val timeoutMillis = 3000L // 3 detik timeout
-//
-//                withContext(Dispatchers.IO) {
-//                    while (true) {
-//                        val bytesRead = input.read(buffer)
-//                        if (bytesRead > 0) {
-//                            val chunk = buffer.decodeToString(0, bytesRead)
-//                            response.append(chunk)
-//                            if ('>' in chunk) break
-//                        }
-//                        // Timeout protection
-//                        if (System.currentTimeMillis() - startTime > timeoutMillis) {
-//                            response.append("TIMEOUT")
-//                            break
-//                        }
-//
-//                        delay(50)
-//                    }
-//                }
-//                return response.toString().trim()
-//            }
-//            var allSuccess = true
-//
-//            val initCmds = listOf("ATZ", "ATE0", "ATL0", "ATH0", "ATSP0", "0100")
-//
-//            for (cmd in initCmds) {
-//                withContext(Dispatchers.IO) {
-//                    output.write((cmd + "\r").toByteArray())
-//                    output.flush()
-//                    delay(200)
-////                    input.read(buffer)
-//                }
-//                delay(300)
-//                val response = readResponse()
-//                Log.d("OBD_INIT", "Command: $cmd → Response: $response")
-//                saveLogToFile(context, "OBD_INIT", "WAIT", response)
-//                if (response.contains("ERROR", ignoreCase = true)) {
-//                    allSuccess = false
-//                    break
-//                }
-//            }
-//            delay(1500)
-//
-////            _readSuccess.value = allSuccess
-//
-//            while (isActive){
-//                try {
-//                    val data = obdRepository.readOBDData(input, output, context)
-//                    sendOBDData(data)
-////                    Log.d("Data_OBD", data.toString())
-////                    saveLogToFile(context, "OBD Data", "DATA", data.toString())
-//                } catch (e: IOException) {
-//                    Log.e("OBD", "error reading OBD data", e)
-////                    _readSuccess.value = false
-//                    break
-//                }
-////                delay(200)
-//            }
-//        }
-//        return readJob
-//    }
 
     private fun sendOBDData(data : Map<String, String>) {
 //        viewModelScope.launch {
@@ -497,15 +326,22 @@ class OBDForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        Log.d("OBDService", "onDestroy() is being called!")
         readJob?.cancel()
         mqttJob?.cancel()
-        serviceScope.launch {
+        stopForeground(STOP_FOREGROUND_REMOVE)
+
+        applicationScope.launch {
+            Log.d("OBDService", "Running async cleanup tasks...")
             obdRepository.updateDoingJob(false)
             mainRepository.updateCurrentStreamId(null)
             mainRepository.updateIsPlaying(false)
             obdRepository.updateServiceState(ServiceState.STOPPED)
+            Log.d("OBDService", "Async cleanup tasks launched.")
         }
+        Log.d("OBDService", "Cancelling service-specific scope...")
         serviceScope.cancel()
+        Log.d("OBDService", "onDestroy() finished.")
         super.onDestroy()
     }
 

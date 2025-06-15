@@ -158,11 +158,15 @@ class BluetoothViewModel @Inject constructor(
 
     }
 
+    suspend fun changeAutoReconnect(isAuto: Boolean){
+        mqttRepository.saveMqttAutoRecon(isAuto)
+    }
+
     suspend fun updateServiceState(newState: ServiceState){
         obdRepository.updateServiceState(newState)
     }
 
-    suspend fun saveBluetoothAddress(address: String){
+    suspend fun saveBluetoothAddress(address: String?){
         bluetoothRepository.saveBluetoothAddress(address)
     }
 
