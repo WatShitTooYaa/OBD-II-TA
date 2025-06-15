@@ -25,7 +25,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -60,44 +59,20 @@ class OBDForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForegroundNotification()
 
-        val input = bluetoothRepository.bluetoothSocket.value?.inputStream
-        val output = bluetoothRepository.bluetoothSocket.value?.outputStream
+//        val input = bluetoothRepository.bluetoothSocket.value?.inputStream
+//        val output = bluetoothRepository.bluetoothSocket.value?.outputStream
 
         readJob?.cancel() // cancel sebelumnya kalau ada
         mqttJob?.cancel()
 //        if (input != null && output != null) {
 //            readJob = startReading(applicationContext, input, output)
 //        }
-
-        serviceScope.launch {
-            obdRepository.isDoingJob.collectLatest { isDoing ->
-                when(isDoing){
-                    true -> {
-                        readJob?.cancel()
-                    }
-                    false -> {
-                        if (input != null && output != null) {
-                            readJob = startReading(applicationContext, input, output)
-                        } else {
-                            Log.e("OBD", "input atau output null")
-                        }
-//                        readJob = startReading(applicationContext, input!!, output!!)
-                    }
-                }
-            }
-        }
-//        while (readJob == null  && input != null && output != null){
-//            readJob = startReading(applicationContext, input, output)
-//        }
-
-        return START_STICKY
-    }
-
-    override fun onCreate() {
-        super.onCreate()
         serviceScope.launch {
             monitorThresholds()
             launch {
+                obdRepository.updateMQTTJobState(MQTTJobState.FREE)
+                obdRepository.updateServiceState(ServiceState.RUNNING)
+                obdRepository.updateOBDJobState(OBDJobState.FREE)
 //                obdRepository.isDoingJob.collectLatest { isDoing ->
 //                    when(isDoing){
 //                        true -> {
@@ -112,41 +87,71 @@ class OBDForegroundService : Service() {
             }
             launch {
                 combine(
-                    obdRepository.isDoingJob,
+                    bluetoothRepository.bluetoothSocket,
+                    obdRepository.obdJobState,
                     obdRepository.networkStatus
-                ) { isDoing, networkStatus ->
-                    Pair(isDoing, networkStatus)
-                }.collect { (isDoing, networkStatus) ->
-                    when(isDoing){
-                        true -> {
+                ) { socket, jobType, networkStatus ->
+//                    Pair(jobType, networkStatus)
+                    Triple(socket, jobType, networkStatus)
+                }.collect { (socket, jobType, networkStatus) ->
+                    when(jobType){
+                        OBDJobState.CHECK_ENGINE -> {
                             readJob?.cancel()
                             mqttJob?.cancel()
                         }
-                        false -> {
-                            when (networkStatus) {
-                                NetworkStatus.Available -> {
-                                    sendToMQTT()
-                                    withContext(Dispatchers.Main) {
-                                        makeToast(this@OBDForegroundService, "Internet tersedia")
-                                    }
+                        OBDJobState.FREE -> {
+                            if (socket != null){
+                                //start reading
+                                readJob = startReading(applicationContext, socket.inputStream, socket.outputStream)
+                                launch {
+                                    obdRepository.updateServiceState(ServiceState.RUNNING)
                                 }
-                                NetworkStatus.Lost -> {
-                                    withContext(Dispatchers.Main) {
-//                                makeToast(this@OBDForegroundService, "Internet tersedia")
-                                        makeToast(this@OBDForegroundService, "Internet terputus")
+                                //check internet
+                                when (networkStatus) {
+                                    NetworkStatus.Available -> {
+                                        sendToMQTT()
+                                        withContext(Dispatchers.Main) {
+                                            makeToast(this@OBDForegroundService, "Internet tersedia")
+                                        }
                                     }
-                                }
-                                NetworkStatus.Unavailable -> {
-                                    withContext(Dispatchers.Main) {
-//                                makeToast(this@OBDForegroundService, "Internet tersedia")
-                                        makeToast(this@OBDForegroundService, "Tidak ada jaringan")
+                                    NetworkStatus.Lost -> {
+                                        withContext(Dispatchers.Main) {
+    //                                makeToast(this@OBDForegroundService, "Internet tersedia")
+                                            makeToast(this@OBDForegroundService, "Internet terputus")
+                                        }
                                     }
+                                    NetworkStatus.Unavailable -> {
+                                        withContext(Dispatchers.Main) {
+    //                                makeToast(this@OBDForegroundService, "Internet tersedia")
+                                            makeToast(this@OBDForegroundService, "Tidak ada jaringan")
+                                        }
+                                    }
+                                    else -> {}
                                 }
-                                else -> {}
+                            } else {
+                                Log.e("OBD", "input atau output null")
                             }
+                        }
+
+                        OBDJobState.READING -> {
+
+                        }
+
+                        OBDJobState.ERROR -> {
+
                         }
                     }
                 }
+            }
+        }
+
+        return START_STICKY
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+
+
 //                obdRepository.networkStatus.collect { status ->
 //                    when (status) {
 //                        NetworkStatus.Available -> {
@@ -170,8 +175,6 @@ class OBDForegroundService : Service() {
 //                        else -> {}
 //                    }
 //                }
-            }
-        }
     }
 
 
@@ -222,13 +225,17 @@ class OBDForegroundService : Service() {
                     .collect { response ->
                         // Setiap kali respons diterima, kita parse dan update data
                         Log.d("OBD_RESPONSE", "Raw: $response")
-                        val parsedData = obdRepository.parseOBDResponse(response)
+                        val parsedData = obdRepository.parseOBDResponse(response, context)
                         if (parsedData.isNotEmpty()) {
                             // Update StateFlow atau kirim ke server
                             obdRepository.updateData(parsedData)
                             sendOBDData(parsedData) // Fungsi Anda untuk mengirim data
                         }
                     }
+            }
+
+            launch {
+                obdRepository.updateOBDJobState(OBDJobState.READING)
             }
 
             // --- Tahap Loop Pengirim Perintah ---
@@ -246,6 +253,9 @@ class OBDForegroundService : Service() {
             }
 
             // Pastikan listener juga berhenti saat job utama selesai
+            launch {
+                obdRepository.updateOBDJobState(OBDJobState.FREE)
+            }
             listenerJob.cancel()
         }
         return readJob
@@ -468,6 +478,9 @@ class OBDForegroundService : Service() {
 //                        manager.notify(notificationId, notification)
                     }
                 }
+                serviceScope.launch {
+                    obdRepository.updateMQTTJobState(MQTTJobState.RUNNING)
+                }
             },
             onFailure = {
                 Log.e("MQTT Helper", "Connection error: ${it.message}")
@@ -476,6 +489,9 @@ class OBDForegroundService : Service() {
                     "MQTTHelper",
                     "ERROR",
                     "Error saat menghubungkan MQTT, cek konfigurasi" )
+                serviceScope.launch {
+                    obdRepository.updateMQTTJobState(MQTTJobState.ERROR)
+                }
             }
         )
     }
@@ -485,6 +501,9 @@ class OBDForegroundService : Service() {
         mqttJob?.cancel()
         serviceScope.launch {
             obdRepository.updateDoingJob(false)
+            mainRepository.updateCurrentStreamId(null)
+            mainRepository.updateIsPlaying(false)
+            obdRepository.updateServiceState(ServiceState.STOPPED)
         }
         serviceScope.cancel()
         super.onDestroy()

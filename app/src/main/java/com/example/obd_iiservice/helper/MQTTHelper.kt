@@ -1,7 +1,7 @@
 package com.example.obd_iiservice.helper
 
 import android.util.Log
-import com.example.obd_iiservice.setting.MQTTConfig
+import com.example.obd_iiservice.setting.ui.mqtt.MQTTConfig
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
@@ -13,7 +13,6 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONObject
 import java.util.Locale
 import java.util.UUID
-import javax.inject.Inject
 
 
 class MqttHelper(

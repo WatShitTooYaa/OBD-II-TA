@@ -3,7 +3,10 @@ package com.example.obd_iiservice.obd
 //import kotlinx.coroutines.NonCancellable.isActive
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.example.obd_iiservice.app.ApplicationScope
 import com.example.obd_iiservice.helper.PreferenceManager
 import com.example.obd_iiservice.helper.saveLogToFile
@@ -33,26 +36,59 @@ import java.io.OutputStream
 import java.util.Locale
 import javax.inject.Inject
 
+// Definisikan status yang mungkin untuk service
+enum class ServiceState {
+    RUNNING,
+    STOPPED
+}
+
+// Definisi Job OBD yang dilakukan
+enum class OBDJobState {
+    FREE,
+    READING,
+    CHECK_ENGINE,
+    ERROR
+}
+
+// Definisi Job OBD yang dilakukan
+enum class MQTTJobState {
+    FREE,
+    RUNNING,
+    ERROR
+}
+
 interface OBDRepository {
-    suspend fun readOBDData(input: InputStream, output: OutputStream, context: Context) : Map<String, String>
+//    suspend fun readOBDData(input: InputStream, output: OutputStream, context: Context) : Map<String, String>
     suspend fun updateData(data: Map<String, String>)
     suspend fun updateBluetoothConnection(connect: Boolean)
     suspend fun updateDoingJob(doing: Boolean)
     // Fungsi BARU: Menghasilkan Flow berisi respons mentah
     fun listenForResponses(input: InputStream): Flow<String>
     // Fungsi parsing bisa kita buat public agar bisa diakses dari luar
-    fun parseOBDResponse(response: String): Map<String, String>
+    fun parseOBDResponse(response: String, context: Context): Map<String, String>
+    suspend fun sendCommand(output: OutputStream, command: String)
+    // Fungsi untuk service agar bisa mengupdate statusnya
+    suspend fun updateServiceState(newState: ServiceState)
+    // Fungsi untuk mengubah state obd
+    suspend fun updateOBDJobState(obdJobState: OBDJobState)
+    // Fungsi untuk mengubah state mqtt
+    suspend fun updateMQTTJobState(mqttJobState: MQTTJobState)
+
+
+    // StateFlow yang bisa diamati oleh UI
+    val serviceState: StateFlow<ServiceState>
     var obdData : StateFlow<Map<String, String>>
     var isBluetoothConnected : StateFlow<Boolean>
     val networkStatus: Flow<NetworkStatus>
     val isDoingJob : StateFlow<Boolean>
+    val obdJobState : StateFlow<OBDJobState>
+    val mqttJobState : StateFlow<MQTTJobState>
 //    suspend fun getDtcCodes(): List<String>
 //    suspend fun sendCommand(
 //        input : InputStream,
 //        output: OutputStream,
 //        command: String
 //    ) : String
-    suspend fun sendCommand(output: OutputStream, command: String)
 }
 
 class OBDRepositoryImpl @Inject constructor(
@@ -60,11 +96,20 @@ class OBDRepositoryImpl @Inject constructor(
     @ApplicationScope private val applicationScope: CoroutineScope,
     @ApplicationContext private val context: Context
 ) : OBDRepository {
+    private val observer = NetworkConnectivityObserver(context)
+    override val networkStatus = observer.networkStatus
+
     private var _isDoingJob = MutableStateFlow<Boolean>(false)
     override val isDoingJob: StateFlow<Boolean> = _isDoingJob.asStateFlow()
 
-    private val observer = NetworkConnectivityObserver(context)
-    override val networkStatus = observer.networkStatus
+    private var _serviceState = MutableStateFlow<ServiceState>(ServiceState.STOPPED)
+    override val serviceState: StateFlow<ServiceState> = _serviceState
+
+    private var _obdJobState = MutableStateFlow<OBDJobState>(OBDJobState.FREE)
+    override val obdJobState : StateFlow<OBDJobState> = _obdJobState
+
+    private var _mqttJobState = MutableStateFlow<MQTTJobState>(MQTTJobState.FREE)
+    override val mqttJobState: StateFlow<MQTTJobState> = _mqttJobState
 
     private val delayResponse : StateFlow<Long> = preferenceManager.delayResponse
         .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), 100)
@@ -73,19 +118,24 @@ class OBDRepositoryImpl @Inject constructor(
     private val _obdData = MutableStateFlow<Map<String, String>>(emptyMap())
     override var obdData: StateFlow<Map<String, String>> = _obdData.asStateFlow()
 
+    private var _serviceIntent = MutableLiveData<Intent?>(null)
+    val serviceIntent : LiveData<Intent?> = _serviceIntent
+
+    //gak kangge
     private val _isBluetoothConnected = MutableStateFlow<Boolean>(false)
     override var isBluetoothConnected: StateFlow<Boolean> = _isBluetoothConnected.asStateFlow()
+    //
 
     private val pidList = listOf("010C", "010D", "0111", "0105", "0110")
 
-    override suspend fun readOBDData(
+    suspend fun readOBDData(
         input: InputStream,
         output: OutputStream,
         context: Context
     ): Map<String, String> {
         val data = mutableMapOf<String, String>()
         for (pid in pidList) {
-            if (!isBluetoothConnected.first()) break
+//            if (!isBluetoothConnected.first()) break
             withContext(Dispatchers.IO) {
                 try {
                     output.write("$pid\r".toByteArray())
@@ -207,33 +257,23 @@ class OBDRepositoryImpl @Inject constructor(
         }
     }
 
-//    override suspend fun sendCommand(
-//        input : InputStream,
-//        output: OutputStream,
-//        command: String
-//    ): String = withContext(Dispatchers.IO) {
-//        output.write((command + "\r").toByteArray())
-//        output.flush()
-//
-//        val buffer = ByteArray(1024)
-//        val bytes = input.read(buffer)
-//        val rawResponse = String(buffer, 0, bytes)
-//        rawResponse
-//    }
+    override suspend fun updateServiceState(newState: ServiceState) {
+        _serviceState.emit(newState)
+    }
 
-//    suspend fun getDTCs(input: InputStream, output: OutputStream): String {
-//        sendCommand(input, output, "ATZ") // reset
-//        delay(1000)
-//        sendCommand(input, output, "ATE0") // echo off
-//        delay(300)
-//        sendCommand(input, output, "0100") // test connection
-//        delay(300)
-//        return sendCommand(input, output, "03") // DTC request
-//    }
+    override suspend fun updateOBDJobState(obdJobState: OBDJobState) {
+        _obdJobState.emit(obdJobState)
+    }
+
+    override suspend fun updateMQTTJobState(mqttJobState: MQTTJobState) {
+        _mqttJobState.emit(mqttJobState)
+    }
 
     override suspend fun updateDoingJob(doing: Boolean) {
         _isDoingJob.emit(doing)
     }
+
+
 
     // Implementasi Reader
     override fun listenForResponses(input: InputStream): Flow<String> = callbackFlow {
@@ -272,7 +312,7 @@ class OBDRepositoryImpl @Inject constructor(
 
 
     // Implementasi parser yang bisa dipanggil dari luar
-    override fun parseOBDResponse(response: String): Map<String, String> {
+    override fun parseOBDResponse(response: String, context: Context): Map<String, String> {
         val data = mutableMapOf<String, String>()
         val cleanResponse = response
             .replace("SEARCHING...", "", ignoreCase = true)
@@ -311,8 +351,6 @@ class OBDRepositoryImpl @Inject constructor(
             Log.w("OBD", "No parser for PID: $cleanResponse")
             saveLogToFile(context, "parsing", "Error", "No parser implemented for PID: $cleanResponse")
         }
-
-
         // ... tambahkan logika parsing untuk PID lainnya (Speed, Temp, dll)
 
         return data

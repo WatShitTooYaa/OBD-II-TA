@@ -36,7 +36,6 @@ class OBDViewModel @Inject constructor(
 //    private var _obdData = MutableStateFlow<Map<String,String>>(emptyMap())
 
 
-
     private var _obdData = obdRepository.obdData
     val obdData : StateFlow<Map<String,String>> = obdRepository.obdData
 
@@ -58,85 +57,77 @@ class OBDViewModel @Inject constructor(
     private var readJob : Job? = null
 
 //    fun startReading(input: InputStream, output: OutputStream) {
-    fun startReading(context: Context, input: InputStream, output: OutputStream) {
-        readJob?.cancel()
-        readJob = viewModelScope.launch {
-            val buffer = ByteArray(1024)
-
-            // Fungsi bantu untuk membaca respons dari ELM327 sampai tanda '>'
-            suspend fun readResponse(): String {
-                val response = StringBuilder()
-
-                val startTime = System.currentTimeMillis()
-                val timeoutMillis = 3000L // 3 detik timeout
-
-                withContext(Dispatchers.IO) {
-                    while (true) {
-                        val bytesRead = input.read(buffer)
-                        if (bytesRead > 0) {
-                            val chunk = buffer.decodeToString(0, bytesRead)
-                            response.append(chunk)
-                            if ('>' in chunk) break
-                        }
-                        // Timeout protection
-                        if (System.currentTimeMillis() - startTime > timeoutMillis) {
-                            response.append("TIMEOUT")
-                            break
-                        }
-
-                        delay(50)
-                    }
-                }
-                return response.toString().trim()
-            }
-            var allSuccess = true
-
-            val initCmds = listOf("ATZ", "ATE0", "ATL0", "ATH0", "ATSP0", "0100")
-
-            for (cmd in initCmds) {
-                withContext(Dispatchers.IO) {
-                    output.write((cmd + "\r").toByteArray())
-                    output.flush()
-                    delay(200)
-//                    input.read(buffer)
-                }
-                delay(300)
-                val response = readResponse()
-                Log.d("OBD_INIT", "Command: $cmd → Response: $response")
-                saveLogToFile(context, "OBD_INIT", "WAIT", response)
-                if (response.contains("ERROR", ignoreCase = true)) {
-                    allSuccess = false
-                    break
-                }
-            }
-            delay(1500)
-
-            _readSuccess.value = allSuccess
-
-            while (isActive){
-                try {
-                    val data = obdRepository.readOBDData(input, output, context)
-                    sendOBDData(data)
-//                    Log.d("Data_OBD", data.toString())
-                    saveLogToFile(context, "OBD Data", "DATA", data.toString())
-//                    _obdData.value =
-//                    _obdData.update { oldData ->
-//                        oldData.toMutableMap().apply {
-//                            putAll(data)
+//    fun startReading(context: Context, input: InputStream, output: OutputStream) {
+//        readJob?.cancel()
+//        readJob = viewModelScope.launch {
+//            val buffer = ByteArray(1024)
+//
+//            // Fungsi bantu untuk membaca respons dari ELM327 sampai tanda '>'
+//            suspend fun readResponse(): String {
+//                val response = StringBuilder()
+//
+//                val startTime = System.currentTimeMillis()
+//                val timeoutMillis = 3000L // 3 detik timeout
+//
+//                withContext(Dispatchers.IO) {
+//                    while (true) {
+//                        val bytesRead = input.read(buffer)
+//                        if (bytesRead > 0) {
+//                            val chunk = buffer.decodeToString(0, bytesRead)
+//                            response.append(chunk)
+//                            if ('>' in chunk) break
 //                        }
+//                        // Timeout protection
+//                        if (System.currentTimeMillis() - startTime > timeoutMillis) {
+//                            response.append("TIMEOUT")
+//                            break
+//                        }
+//
+//                        delay(50)
 //                    }
-//                    _readSuccess.update { oldData ->
-//                        oldData
-//                    }
-                } catch (e: IOException) {
-                    Log.e("OBD", "error reading OBD data", e)
-                    _readSuccess.value = false
-                    break
-                }
-                delay(500)
-            }
-        }
-    }
+//                }
+//                return response.toString().trim()
+//            }
+//            var allSuccess = true
+//
+//            val initCmds = listOf("ATZ", "ATE0", "ATL0", "ATH0", "ATSP0", "0100")
+//
+//            for (cmd in initCmds) {
+//                withContext(Dispatchers.IO) {
+//                    output.write((cmd + "\r").toByteArray())
+//                    output.flush()
+//                    delay(200)
+////                    input.read(buffer)
+//                }
+//                delay(300)
+//                val response = readResponse()
+//                Log.d("OBD_INIT", "Command: $cmd → Response: $response")
+//                saveLogToFile(context, "OBD_INIT", "WAIT", response)
+//                if (response.contains("ERROR", ignoreCase = true)) {
+//                    allSuccess = false
+//                    break
+//                }
+//            }
+//            delay(1500)
+//
+//            _readSuccess.value = allSuccess
+//
+//            while (isActive){
+//                try {
+//                    val data = obdRepository.readOBDData(input, output, context)
+//                    sendOBDData(data)
+////                    Log.d("Data_OBD", data.toString())
+//                    saveLogToFile(context, "OBD Data", "DATA", data.toString())
+//
+//                } catch (e: IOException) {
+//                    Log.e("OBD", "error reading OBD data", e)
+//                    _readSuccess.value = false
+//                    break
+//                }
+//                delay(500)
+//            }
+//        }
+//    }
 
     private suspend fun sendCommand(
         cmd: String,
@@ -193,6 +184,10 @@ class OBDViewModel @Inject constructor(
             obdRepository.updateData(mergedData)
         }
     }
+
+//    fun updateServiceState(newState: ServiceState){
+//        obdRepository.updateServiceState(newState)
+//    }
 
     suspend fun updateBluetoothConnection(connect: Boolean){
         obdRepository.updateBluetoothConnection(connect)

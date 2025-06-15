@@ -5,8 +5,12 @@ import android.bluetooth.BluetoothSocket
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.obd_iiservice.bluetooth.BluetoothConnectionState
 import com.example.obd_iiservice.bluetooth.BluetoothRepository
+import com.example.obd_iiservice.bluetooth.ObserveConnectionBluetooth
 import com.example.obd_iiservice.obd.OBDRepository
+import com.example.obd_iiservice.obd.ServiceState
+import com.example.obd_iiservice.setting.ui.mqtt.MqttRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,6 +18,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -22,21 +28,45 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BluetoothViewModel @Inject constructor(
-    private val bluetoothrepository: BluetoothRepository,
-    private val obdRepository: OBDRepository
+    private val bluetoothRepository: BluetoothRepository,
+    private val obdRepository: OBDRepository,
+    private val mqttRepository: MqttRepository
 ) : ViewModel() {
 //    private val _isConnected = MutableLiveData(false)
 //    val isConnected : LiveData<Boolean> get() = _isConnected
+
+    val serviceState = obdRepository.serviceState
+
+
+    private var _reconnectingJob = MutableStateFlow<Job?>(null)
+    val reconnectingJob : StateFlow<Job?> = _reconnectingJob.asStateFlow()
+
+    val bluetoothAddress = bluetoothRepository.bluetoothAddress
+    val connectionState = bluetoothRepository.connectionState
+    val isAutoRecon = mqttRepository.mqttAutoReconnect
+
+    val combineToReconnecting = combine(
+        reconnectingJob,
+        bluetoothAddress,
+        connectionState,
+        isAutoRecon
+    ){ job, address, state, isAuto ->
+        ReconnectingBluetoothData(
+            job,
+            address,
+            state,
+            isAuto
+        )
+    }
+
     val isConnected : StateFlow<Boolean> = obdRepository.isBluetoothConnected
 
     private var _isReceiverRegistered = MutableStateFlow<Boolean>(false)
     val isReceiverRegistered : StateFlow<Boolean> = _isReceiverRegistered
 
 //    private var _bluetoothSocket = MutableStateFlow<BluetoothSocket?>(null)
-    val bluetoothSocket: StateFlow<BluetoothSocket?> = bluetoothrepository.bluetoothSocket
+    val bluetoothSocket: StateFlow<BluetoothSocket?> = bluetoothRepository.bluetoothSocket
 
-    private var _reconnectingJob = MutableStateFlow<Job?>(null)
-    val reconnectingJob : StateFlow<Job?> = _reconnectingJob.asStateFlow()
 
     private var _previousAddress = MutableStateFlow<String?>(null)
     val previousAddress: StateFlow<String?> = _previousAddress
@@ -82,8 +112,8 @@ class BluetoothViewModel @Inject constructor(
         viewModelScope.launch {
             try {
 //                bluetoothSocket = repository.connectToDevice(address)
-                updateBluetoothSocket(bluetoothrepository.connectToDevice(address))
-                if (bluetoothSocket.value != null && bluetoothSocket.value?.isConnected == true) {
+                updateBluetoothSocket(bluetoothRepository.connectToDevice(address))
+                if (bluetoothSocket.first() != null && bluetoothSocket.value?.isConnected == true) {
                     onSuccess()
                 } else {
                     onError("Socket is null or not connected")
@@ -118,7 +148,7 @@ class BluetoothViewModel @Inject constructor(
 
     suspend fun updateBluetoothSocket(socket: BluetoothSocket?) {
 //        _bluetoothSocket.value = socket
-        bluetoothrepository.updateBluetoothSocket(socket)
+        bluetoothRepository.updateBluetoothSocket(socket)
 //        _isConnected.value = socket?.isConnected == true
 //        _isConnected.value = if (socket != null && socket.isConnected){
 //            true
@@ -126,6 +156,22 @@ class BluetoothViewModel @Inject constructor(
 //            false
 //        }
 
+    }
+
+    suspend fun updateServiceState(newState: ServiceState){
+        obdRepository.updateServiceState(newState)
+    }
+
+    suspend fun saveBluetoothAddress(address: String){
+        bluetoothRepository.saveBluetoothAddress(address)
+    }
+
+    suspend fun updateConnectionState(state: BluetoothConnectionState){
+        bluetoothRepository.updateConnectionState(state)
+    }
+
+    suspend fun checkDataForConnecting() : Boolean{
+        return bluetoothRepository.checkDataForConnecting()
     }
 
     suspend fun updateReconnectingJob(job: Job?) {

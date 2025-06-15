@@ -1,6 +1,7 @@
 package com.example.obd_iiservice.setting.ui.bluetooth
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
@@ -8,15 +9,19 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.os.Build
 import android.os.Build.VERSION
 import android.os.Bundle
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
@@ -27,6 +32,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.obd_iiservice.R
+import com.example.obd_iiservice.bluetooth.BluetoothConnectionState
 import com.example.obd_iiservice.bluetooth.BluetoothDeviceAdapter
 import com.example.obd_iiservice.bluetooth.BluetoothDeviceItem
 import com.example.obd_iiservice.bluetooth.ObserveConnectionBluetooth
@@ -36,8 +42,10 @@ import com.example.obd_iiservice.helper.makeToast
 import com.example.obd_iiservice.helper.saveLogToFile
 import com.example.obd_iiservice.log.LogViewActivity
 import com.example.obd_iiservice.obd.OBDForegroundService
+import com.example.obd_iiservice.obd.ServiceState
 import com.example.obd_iiservice.setting.SettingActivity
 import com.example.obd_iiservice.threshold.ThresholdActivity
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
@@ -45,19 +53,22 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
+@AndroidEntryPoint
 class BluetoothActivity : AppCompatActivity() {
     private lateinit var binding: ActivityBluetoothBinding
     private lateinit var bluetoothDeviceAdapter: BluetoothDeviceAdapter
     private lateinit var rvBluetooth: RecyclerView
     private val listBluetoothDevice = mutableListOf<BluetoothDeviceItem>()
     private val bluetoothViewModel : BluetoothViewModel by viewModels()
-
+    // Variabel untuk menyimpan menu agar bisa diakses nanti
+    private var optionsMenu: Menu? = null
     @Inject
     lateinit var bluetoothAdapter: BluetoothAdapter
 
     private val REQUEST_PERMISSION = 2
     private val PERMISSION_REQUEST_BLUETOOTH = 1
+
+    private lateinit var INTENT_SERVICE_STATE : Intent
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,12 +76,70 @@ class BluetoothActivity : AppCompatActivity() {
 
         binding = ActivityBluetoothBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // Atur Toolbar sebagai ActionBar
+        setSupportActionBar(binding.topAppBar)
 
+        // Amati status koneksi dari ViewModel atau Repository
+        initUI()
+        observeConnectionStatus()
+        observerConnection()
+        INTENT_SERVICE_STATE = Intent(this, OBDForegroundService::class.java)
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+//        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+//            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+//            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+//            insets
+//        }
+    }
+    // 1. Inflate menu Anda ke AppBar
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.bluetooth_menu, menu)
+        this.optionsMenu = menu
+        return true
+    }
+
+    // 2. Metode ini dipanggil setiap kali menu akan ditampilkan.
+    //    Ini adalah tempat terbaik untuk mengubah ikon secara dinamis.
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+//        val connectionItem = menu.findItem(R.id.action_connection_status)
+
+        // Ambil status koneksi saat ini (misalnya dari ViewModel)
+//        val isConnected = viewModel.isConnected.value
+//
+//        if (isConnected) {
+//            connectionItem?.setIcon(R.drawable.ic_bluetooth_connected)
+//        } else {
+//            connectionItem?.setIcon(R.drawable.ic_bluetooth_disconnected)
+//        }
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    // 3. Tangani klik pada item menu (ikon Anda)
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+//            R.id.action_connection_status -> {
+//                // Logika saat ikon di-klik
+//                // Misalnya: buka dialog koneksi, coba sambungkan ulang, dll.
+//                viewModel.toggleConnection()
+//                true
+//            }
+//            // Handle item menu lain jika ada
+//            R.id.action_settings -> {
+//                // Buka halaman setting
+//                true
+//            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun observeConnectionStatus() {
+        lifecycleScope.launch {
+//            viewModel.isConnected.collect { isConnected ->
+//                // PENTING: Panggil invalidateOptionsMenu() setiap kali status berubah.
+//                // Ini akan memaksa Android untuk memanggil onPrepareOptionsMenu() lagi
+//                // dan menggambar ulang menu dengan ikon yang benar.
+//                invalidateOptionsMenu()
+//            }
         }
     }
 
@@ -79,69 +148,47 @@ class BluetoothActivity : AppCompatActivity() {
         rvBluetooth.setHasFixedSize(true)
         showRecycleView()
 
-        binding.btnScanIfAutoReconFalse.setOnClickListener {
-            checkAndRequestPermissions()
-        }
+        // Atur OnClickListener HANYA SATU KALI di sini.
+        binding.btnScanConnect.setOnClickListener {
+            // Di dalam listener, kita cek state TERKINI dari ViewModel
+            val currentState = bluetoothViewModel.connectionState.value
+            val currentAddress = bluetoothViewModel.bluetoothAddress.value
 
-        binding.btnScanIfAutoReconTrue.setOnClickListener {
-            checkAndRequestPermissions()
-        }
+            Log.d("ButtonClick", "Button clicked with state: $currentState")
 
-        binding.btnConnectIfAutoReconFalse.setOnClickListener {
-            lifecycleScope.launch {
-                settingViewModel.isInitialized
-                    .filter { it } // hanya lanjut kalau true
-                    .first()
-                val canConnect = settingViewModel.checkDataForConnecting()
-                val address = settingViewModel.bluetoothAddress.first()
-//                makeToast(this@MainActivity, "top : $topic, p: $port, ho: $host, adress : $address")
-                if (!bluetoothAdapter.isEnabled) {
-                    val enableBtnIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                    enableBluetoothLauncher.launch(enableBtnIntent)
-                } else {
-                    if (canConnect && address != null){
-                        connectToDevice(address)
+            when (currentState) {
+                BluetoothConnectionState.IDLE -> {
+                    if (currentAddress == null) {
+                        // Aksi untuk "Scan Devices..."
+                        if (!bluetoothAdapter.isEnabled) {
+                            val enableBtnIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                            enableBluetoothLauncher.launch(enableBtnIntent)
+                        } else {
+                            checkAndRequestPermissions()
+                        }
                     } else {
-                        makeToast(this@MainActivity, "topic atau port tidak boleh kosong")
+                        // Aksi untuk "Connect"
+                        connectToDevice(currentAddress)
                     }
                 }
-            }
-        }
 
-        binding.btnDisconnectIfAutoReconFalse.setOnClickListener {
-            disconnectOrClose()
-        }
-
-        binding.topAppBar.setOnMenuItemClickListener { menuItem ->
-            when(menuItem.itemId) {
-                R.id.nav_settings -> {
-                    val intent = Intent(this, SettingActivity::class.java)
-                    startActivity(intent)
-                    true
-                }
-                R.id.nav_log -> {
-                    val intent = Intent(this, LogViewActivity::class.java)
-                    startActivity(intent)
-                    true
-                }
-                R.id.nav_dtc -> {
-                    val intent = Intent(this, DTCActivity::class.java)
-                    startActivity(intent)
-                    true
-                }
-                R.id.nav_treshold -> {
-                    val intent = Intent(this, ThresholdActivity::class.java)
-                    startActivity(intent)
-                    true
-                }
-                R.id.nav_quit -> {
+                BluetoothConnectionState.CONNECTED -> {
+                    // Aksi untuk "Disconnect"
                     disconnectOrClose()
-                    finish()
-                    true
                 }
-                else -> false
+
+                BluetoothConnectionState.CONNECTING -> {
+                    // Tombol dinonaktifkan, seharusnya tidak bisa diklik,
+                    // tapi kita bisa tambahkan log untuk jaga-jaga.
+                    Log.d("ButtonClick", "Clicked while connecting, no action.")
+                }
+
+                else -> {
+                    // State lain, tidak melakukan apa-apa
+                }
             }
         }
+
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -150,152 +197,156 @@ class BluetoothActivity : AppCompatActivity() {
         }
     }
 
-    private fun observerViewModel(){
+    private fun observerConnection(){
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
 
                 launch {
-                    settingViewModel.mqttAutoRecon.collect { isAuto ->
-                        if (isAuto){
-                            binding.clContainerButtonIfAutoReconTrue.visibility = View.VISIBLE
-                            binding.clContainerButtonIfAutoReconFalse.visibility = View.GONE
-                        } else {
-                            binding.clContainerButtonIfAutoReconTrue.visibility = View.GONE
-                            binding.clContainerButtonIfAutoReconFalse.visibility = View.VISIBLE
+                    bluetoothViewModel.combineToReconnecting.collect { (reconnectingJob, address, connectionState, isAuto) ->
+                        binding.rvListDevices.visibility = View.VISIBLE // Selalu terlihat kecuali saat connected
+
+                        when (connectionState) {
+                            BluetoothConnectionState.IDLE -> {
+                                binding.btnScanConnect.visibility = View.VISIBLE
+                                binding.btnScanConnect.isEnabled = true
+                                if (address == null) {
+                                    binding.btnScanConnect.text = "Scan Devices..."
+                                } else {
+                                    binding.btnScanConnect.text = "Connect"
+                                }
+                            }
+
+                            BluetoothConnectionState.CONNECTING -> {
+                                binding.btnScanConnect.visibility = View.VISIBLE
+                                binding.btnScanConnect.isEnabled = false
+                                binding.btnScanConnect.text = "Connecting..."
+                            }
+
+                            BluetoothConnectionState.CONNECTED -> {
+                                binding.btnScanConnect.visibility = View.VISIBLE
+                                binding.btnScanConnect.text = "Disconnect"
+                                binding.btnScanConnect.isEnabled = !isAuto // Hanya bisa disconnect jika tidak auto-reconnect
+
+                                // Sembunyikan daftar perangkat jika sudah terhubung
+                                // binding.rvListDevices.visibility = View.GONE
+                            }
+
+                            BluetoothConnectionState.FAILED -> {
+                                // Kembali ke IDLE, collector akan menangani UI-nya
+                                bluetoothViewModel.updateConnectionState(BluetoothConnectionState.IDLE)
+                            }
                         }
                     }
+//                    bluetoothViewModel.combineToReconnecting.collect { (reconnectingJob, address, connectionState, isAuto) ->
+//                        when(connectionState){
+//                            BluetoothConnectionState.IDLE -> {
+//                                //address kosong
+//                                if (address == null) {
+//                                    bluetoothViewModel.reconnectingJob.value?.cancel()
+//                                    bluetoothViewModel.updateReconnectingJob(null)
+//
+//                                    binding.btnScanConnect.apply {
+//                                        text = "Scan devices..."
+//                                        visibility = View.VISIBLE
+//                                        setOnClickListener {
+//                                            if (!bluetoothAdapter.isEnabled) {
+//                                                val enableBtnIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+//                                                enableBluetoothLauncher.launch(enableBtnIntent)
+//                                            } else {
+//                                                checkAndRequestPermissions()
+//                                            }
+//                                            makeToast(this@BluetoothActivity, "click scan")
+//                                        }
+//                                    }
+//                                    binding.rvListDevices.visibility = View.VISIBLE
+//                                }
+//                                //address ada
+//                                else {
+//                                    when(isAuto){
+//                                        //tidak auto reconnect
+//                                        false -> {
+//                                            binding.btnScanConnect.apply {
+//                                                text = "Connect"
+//                                                visibility = View.VISIBLE
+//                                                setOnClickListener {
+//                                                    connectToDevice(address)
+//                                                    Log.d("connect", "klik konek buton")
+//                                                }
+//                                            }
+//                                            binding.rvListDevices.visibility = View.VISIBLE
+//                                        }
+//                                        //auto reconnect
+//                                        true -> {
+//                                            //job reconnect kosong
+//                                            if (reconnectingJob == null){
+////                                                reconnectUntilSuccess(address)
+//                                                bluetoothViewModel.updateReconnectingJob(reconnectUntilSuccess(address))
+//                                                bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTING)
+//                                            } else {
+//                                                binding.btnScanConnect.apply {
+//                                                    text = "Connecting"
+//                                                    isEnabled = false
+//                                                }
+//                                            }
+//                                            binding.rvListDevices.visibility = View.VISIBLE
+//                                        }
+//                                    }
+//                                }
+//                            }
+//
+//                            BluetoothConnectionState.CONNECTING -> {
+//                                binding.btnScanConnect.apply {
+//                                    text = "Connecting"
+//                                    isEnabled = false
+//                                }
+//                            }
+//                            BluetoothConnectionState.CONNECTED -> {
+//                                when(isAuto){
+//                                    false -> {
+//                                        binding.btnScanConnect.apply {
+//                                            text = "Connected"
+//                                            isEnabled = true
+//                                            setOnClickListener {
+//                                                disconnectOrClose()
+//                                            }
+//                                        }
+////                                        binding.rvListDevices.visibility = View.GONE
+//                                    }
+//
+//                                    true -> {
+//                                        binding.btnScanConnect.apply {
+//                                            text = "Connected"
+//                                            isEnabled = false
+//                                        }
+//                                    }
+//                                }
+//                            }
+//                            BluetoothConnectionState.FAILED -> {
+//                                bluetoothViewModel.updateConnectionState(BluetoothConnectionState.IDLE)
+//                            }
+//                        }
+//                    }
                 }
 
                 launch {
                     bluetoothViewModel.bluetoothSocket.collect {
-                        if (it != null && it.isConnected == false){
+                        if (it != null && !it.isConnected){
                             disconnectOrClose()
                         }
                     }
                 }
 
-                launch {
-                    repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        obdViewModel.obdData.collect { data ->
-                            binding.tvDataRpm.text = data["Rpm"]?.toIntOrNull()?.toString() ?: "-"
-                            binding.tvDataSpeed.text = data["Speed"]?.toIntOrNull()?.toString() ?: "-"
-                            binding.tvDataThrottle.text = data["Throttle"]?.toIntOrNull()?.toString() ?: "-"
-                            binding.tvDataTemp.text = data["Temp"]?.toIntOrNull()?.toString() ?: "-"
-                            binding.tvDataMaf.text = data["Maf"]?.toDoubleOrNull()?.toString() ?: "-"
-                        }
-                    }
-                }
-
-                launch {
-                    combine(
-                        settingViewModel.bluetoothAddress,
-                        bluetoothViewModel.isConnected,
-                        settingViewModel.mqttAutoRecon,
-                        bluetoothViewModel.reconnectingJob
-                    ) { address, isConnected, isAuto, reconnectingJob ->
-                        // Combine jadi Quadruple
-                        ObserveConnectionBluetooth(address, isConnected, isAuto, reconnectingJob)
-                    }.collect { (address, isConnected, isAuto, reconnectingJob) ->
-                        if (address != null && !isConnected && isAuto) {
-                            if (reconnectingJob?.isActive != true && settingViewModel.checkDataForConnecting()) {
-                                makeToast(this@MainActivity, "recon")
-                                bluetoothViewModel.updateReconnectingJob(reconnectUntilSuccess(address))
-                            } else if (settingViewModel.checkDataForConnecting() == false){
-                                makeToast(this@MainActivity, "topic atau port tidak boleh kosong")
-                                saveLogToFile(
-                                    this@MainActivity,
-                                    "reconnect",
-                                    "ERROR",
-                                    "Topic atau port tidak boleh kosong"
-                                )
-                                delay(1000)
-                            } else {
-                                makeToast(this@MainActivity, "error saat akan reconnecting otomatis")
-                                saveLogToFile(
-                                    this@MainActivity,
-                                    "reconnect",
-                                    "ERROR",
-                                    "error saat akan reconnecting otomatis")
-                            }
-                        } else {
-                            bluetoothViewModel.updateReconnectingJob(null)
-                        }
-
-                        // Pengecekan untuk disconnect jika address == null atau isAuto berubah
-                        val addressChangedToNull = bluetoothViewModel.previousAddress.first() != address && address == null
-                        val isAutoChanged = bluetoothViewModel.previousIsAuto.first() != isAuto
-
-                        if ((addressChangedToNull || isAutoChanged) && (address == null || !isAuto)) {
-                            makeToast(this@MainActivity, "disconnect when address == null or isAuto == false")
-                            disconnectOrClose()
-                        }
-
-                        // Simpan nilai saat ini sebagai nilai sebelumnya
-//                        previousAddress = address
-//                        previousIsAuto = isAuto
-                        address?.let { bluetoothViewModel.updatePreviousAddress(it) }
-                        isAuto.let { bluetoothViewModel.updatePreviousIsAuto(it) }
-
-                        address?.let { binding.tvAddressBluetooth.text = it } ?: "-"
-                        // Update UI
-                        //jika address tidak ada dan terputus (kondisi awal)
-                        if (address == null && !isConnected){
-                            makeToast(this@MainActivity, "address tidak ada dan terputus")
-                            binding.rvListDevices.visibility = View.VISIBLE
-                            binding.llDashboard.visibility = View.GONE
-                            binding.btnScanIfAutoReconTrue.visibility = View.VISIBLE
-                            binding.btnScanIfAutoReconFalse.visibility = View.VISIBLE
-                            binding.rvListDevices.visibility = View.VISIBLE
-                            binding.btnConnectIfAutoReconFalse.visibility = View.GONE
-                        }
-                        //jika address ada dan terhubung
-                        else if (address != null && isConnected) {
-                            makeToast(this@MainActivity, "address ada dan terhubung")
-                            if (isAuto){
-//                                binding.btnScanIfAutoReconFalse.visibility = View.GONE
-//                                binding.btnDisconnectIfAutoReconFalse.visibility = View.VISIBLE
-                                binding.btnConnectIfAutoReconTrue.visibility = View.VISIBLE
-                                binding.btnConnectIfAutoReconTrue.text = "Connected"
-                            } else {
-                                binding.btnDisconnectIfAutoReconFalse.visibility = View.VISIBLE
-
-                            }
-                            binding.btnScanIfAutoReconFalse.visibility = View.GONE
-                            binding.btnScanIfAutoReconTrue.visibility = View.GONE
-                            binding.rvListDevices.visibility = View.GONE
-                            binding.btnConnectIfAutoReconFalse.visibility = View.GONE
-                            binding.rvListDevices.visibility = View.GONE
-                            binding.llDashboard.visibility = View.VISIBLE
-                        }
-                        //jika address ada namun terputus
-                        else if (address != null && !isConnected){
-                            makeToast(this@MainActivity, "address ada namun terputus")
-
-                            if (!isAuto){
-                                binding.btnConnectIfAutoReconFalse.visibility = View.VISIBLE
-                                binding.btnDisconnectIfAutoReconFalse.visibility = View.GONE
-                            } else {
-                                binding.btnScanIfAutoReconTrue.visibility = View.GONE
-                                binding.btnConnectIfAutoReconTrue.visibility = View.VISIBLE
-                                binding.btnConnectIfAutoReconTrue.isEnabled = false
-                                binding.btnConnectIfAutoReconTrue.text = "Reconnecting..."
-                            }
-                            binding.rvListDevices.visibility = View.GONE
-                            binding.llDashboard.visibility = View.GONE
-//                            binding.rvListDevices.visibility = View.VISIBLE
-//                            binding.llDashboard.visibility = View.GONE
-                        }
-                    }
-                }
             }
         }
     }
 
+    @SuppressLint("MissingPermission")
     private val enableBluetoothLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { res ->
         if (res.resultCode == RESULT_OK) {
-            startDiscovery()
+//            startDiscovery()
+            checkAndRequestPermissions()
         } else {
             Toast.makeText(this, "Bluetooth tidak diaktifkan", Toast.LENGTH_SHORT).show()
         }
@@ -307,14 +358,10 @@ class BluetoothActivity : AppCompatActivity() {
         bluetoothDeviceAdapter = BluetoothDeviceAdapter(
             listBluetoothDevice,
             object : BluetoothDeviceAdapter.OnDeviceConnectListener {
-//                override fun onConnect(address: String) {
-//                    connectToDevice(address)
-//                }
-
                 override fun onSaveBluetoothDevice(address: String) {
 //                    bluetoothViewModel
                     lifecycleScope.launch {
-                        settingViewModel.saveBluetoothAddress(address)
+                        bluetoothViewModel.saveBluetoothAddress(address)
                     }
                 }
             }
@@ -322,28 +369,66 @@ class BluetoothActivity : AppCompatActivity() {
         rvBluetooth.adapter = bluetoothDeviceAdapter
     }
 
+//    private fun startScanProcess() {
+//        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+//        val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+//
+//        if (!isGpsEnabled) {
+//            // Beri tahu pengguna untuk menyalakan GPS
+//            Toast.makeText(this, "Tolong nyalakan Layanan Lokasi (GPS) untuk menemukan perangkat.", Toast.LENGTH_LONG).show()
+//            // Anda juga bisa mengarahkan pengguna ke pengaturan lokasi
+//            // startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+//            return // Jangan lanjutkan scan jika GPS mati
+//        }
+//
+//        // Jika GPS sudah nyala, baru lanjutkan ke startDiscovery()
+//        startDiscovery()
+//    }
+
+
     private fun checkAndRequestPermissions() {
-        if (VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val permissions = mutableListOf<String>()
+        //check gps hidup atau tidak
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+
+        if (!isGpsEnabled) {
+            // Beri tahu pengguna untuk menyalakan GPS
+            Toast.makeText(this, "Tolong nyalakan Layanan Lokasi (GPS) untuk menemukan perangkat.", Toast.LENGTH_LONG).show()
+            // Anda juga bisa mengarahkan pengguna ke pengaturan lokasi
+            // startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            return // Jangan lanjutkan scan jika GPS mati
+        }
+
+        val permissionsToRequest = mutableListOf<String>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Untuk Android 12+
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+                permissionsToRequest.add(Manifest.permission.BLUETOOTH_SCAN)
             }
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+                permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
             }
+            Log.d("Android Version", "12+")
 
-            if (permissions.isNotEmpty()) {
-                requestPermissions(permissions.toTypedArray(), PERMISSION_REQUEST_BLUETOOTH)
-            } else {
-//                startDiscovery() // Aman langsung scanning
-                enableBluetooth()
-            }
         } else {
-//            startDiscovery(
+            // Untuk Android 11 dan di bawahnya, butuh izin lokasi
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+            Log.d("Android Version", "11-")
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            // Minta semua izin yang dibutuhkan sekaligus
+            requestPermissions(permissionsToRequest.toTypedArray(), PERMISSION_REQUEST_BLUETOOTH)
+        } else {
+            // Jika semua izin sudah ada, langsung jalankan prosesnya
             enableBluetooth()
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -351,15 +436,19 @@ class BluetoothActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_BLUETOOTH) {
-            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                startDiscovery()
-//                enableBluetooth()
+            // Cek apakah semua izin yang diminta telah diberikan
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                // Jika semua izin diberikan, lanjutkan prosesnya
+                Log.d("Permissions", "All permissions granted. Starting process.")
+                enableBluetooth()
             } else {
-                Toast.makeText(this, "Bluetooth permission denied", Toast.LENGTH_SHORT).show()
+                // Jika ada izin yang ditolak, beri tahu pengguna
+                Toast.makeText(this, "Permission is required to find bluetooth devices.", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     private fun enableBluetooth() {
         if (!bluetoothAdapter.isEnabled) {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
@@ -369,6 +458,7 @@ class BluetoothActivity : AppCompatActivity() {
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     private fun startDiscovery(){
         val filter = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)
@@ -378,16 +468,13 @@ class BluetoothActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            if (bluetoothViewModel.isReceiverRegistered.first() == false) {
+            if (!bluetoothViewModel.isReceiverRegistered.first()) {
                 registerReceiver(receiver, filter)
                 bluetoothViewModel.changeIsReceiverRegistered(true)
+                Log.d("bluetooth", "isReceiverRegistered")
             }
         }
-
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_PERMISSION)
-            return
-        }
+        Log.d("bluetooth", "Start discovery")
 //        deviceList.clear()
         listBluetoothDevice.clear()
 //        deviceListAdapter.notifyDataSetChanged()
@@ -399,20 +486,27 @@ class BluetoothActivity : AppCompatActivity() {
 
     private fun connectToDevice(address: String) {
         // UUID default untuk SPP (Serial Port Profile)
+        Log.d("bluetooth", "connecting")
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED){
             if (VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_CONNECT), REQUEST_PERMISSION)
             }
-            return
+//            return
+        }
+        Log.d("bluetooth", "connecting")
+
+        lifecycleScope.launch {
+            bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTING)
         }
         bluetoothViewModel.connectToDevice(
             address = address,
             onSuccess = {
                 val device = bluetoothViewModel.bluetoothSocket.value?.remoteDevice
-                binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
+//                binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
                 lifecycleScope.launch {
-                    settingViewModel.saveBluetoothAddress(address)
-                    obdViewModel.updateBluetoothConnection(true)
+                    bluetoothViewModel.saveBluetoothAddress(address)
+//                    obdViewModel.updateBluetoothConnection(true)
+                    bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTED)
                 }
                 Toast.makeText(this, "Connected to ${device?.name}", Toast.LENGTH_SHORT).show()
                 saveLogToFile(this, "Connect Bluetooth", "OK", "Connected to ${device?.name}")
@@ -420,6 +514,9 @@ class BluetoothActivity : AppCompatActivity() {
                 startAndBindOBDService()
             },
             onError = { error ->
+                lifecycleScope.launch {
+                    bluetoothViewModel.updateConnectionState(BluetoothConnectionState.IDLE)
+                }
                 Toast.makeText(this, "Connection failed: $error", Toast.LENGTH_LONG).show()
                 saveLogToFile(this, "Connect Bluetooth", "ERROR", "Connection failed: $error")
                 Log.e("Bluetooth", "Connection failed: $error")
@@ -439,29 +536,32 @@ class BluetoothActivity : AppCompatActivity() {
         return lifecycleScope.launch {
             var attempt = 0
 //            val maxAttempts = 5
-            while (bluetoothViewModel.isConnected.value == false) {
+            while (bluetoothViewModel.connectionState.value == BluetoothConnectionState.CONNECTING
+                || bluetoothViewModel.connectionState.value == BluetoothConnectionState.IDLE) {
                 Log.d("Bluetooth", "Attempt reconnect: $attempt")
 
                 val success = bluetoothViewModel.connectToDeviceSuspend(address)
 
                 if (success) {
                     val device = bluetoothViewModel.bluetoothSocket.value?.remoteDevice
-                    binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
-                    Toast.makeText(this@MainActivity, "Connected to ${device?.name}", Toast.LENGTH_SHORT).show()
+//                    binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
+                    Toast.makeText(this@BluetoothActivity, "Connected to ${device?.name}", Toast.LENGTH_SHORT).show()
                     saveLogToFile(
-                        this@MainActivity,
+                        this@BluetoothActivity,
                         "Connect Bluetooth",
                         "OK",
                         "Reconnected to ${device?.name}"
                     )
 //                    testObdConnection()
                     startAndBindOBDService()
-                    obdViewModel.updateBluetoothConnection(true)
+//                    obdViewModel.updateBluetoothConnection(true)
+                    bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTED)
                     break // berhenti mencoba jika sudah terkoneksi
                 } else {
                     Log.e("Bluetooth", "Reconnect failed")
+                    bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTING)
                     saveLogToFile(
-                        this@MainActivity,
+                        this@BluetoothActivity,
                         "Reconnect Bluetooth",
                         "ERROR",
                         "Reconnect ke-${attempt} gagal"
@@ -486,16 +586,18 @@ class BluetoothActivity : AppCompatActivity() {
                         intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                     }
 
-                    if (ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH)
+                    if (ActivityCompat.checkSelfPermission(this@BluetoothActivity, Manifest.permission.BLUETOOTH)
                         != PackageManager.PERMISSION_GRANTED
                     ) {
                         ActivityCompat.requestPermissions(
-                            this@MainActivity,
+                            this@BluetoothActivity,
                             arrayOf(Manifest.permission.BLUETOOTH),
                             REQUEST_PERMISSION
                         )
                         return
                     }
+
+                    Log.d("bluetooth", "Bluetooth Action Found")
 
                     device?.let {
                         val name = it.name ?: "Unknown Device"
@@ -503,6 +605,7 @@ class BluetoothActivity : AppCompatActivity() {
                         val deviceItem = BluetoothDeviceItem(name = name, address = address)
                         Log.d("BluetoothScan", "Device found: $name - $address")
                         listBluetoothDevice.add(deviceItem)
+                        Log.d("device", deviceItem.toString())
                         bluetoothDeviceAdapter.notifyItemInserted(listBluetoothDevice.size - 1)
                     }
                 }
@@ -525,33 +628,43 @@ class BluetoothActivity : AppCompatActivity() {
     }
 
     private fun startAndBindOBDService() {
-        val serviceIntent = Intent(this, OBDForegroundService::class.java)
         // Start the service
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
+            startForegroundService(INTENT_SERVICE_STATE)
         } else {
-            startService(serviceIntent)
+            startService(INTENT_SERVICE_STATE)
         }
     }
 
     private fun stopAndUnbindOBDService() {
-        val serviceIntent = Intent(this, OBDForegroundService::class.java)
-        stopService(serviceIntent) // This will eventually call onDestroy in the service
+        stopService(INTENT_SERVICE_STATE) // This will eventually call onDestroy in the service
         Log.d("MainActivity", "OBD Service stopped and unbound")
     }
 
     private fun disconnectOrClose(){
-        stopAndUnbindOBDService()
-        obdViewModel.stopReading()
-        if (obdViewModel.serviceIntent.value != null) {
-            stopService(obdViewModel.serviceIntent.value)
+//        stopAndUnbindOBDService()
+//        obdViewModel.stopReading()
+        if (bluetoothViewModel.serviceState.value == ServiceState.RUNNING) {
+            stopService(INTENT_SERVICE_STATE)
         }
         lifecycleScope.launch {
-            obdViewModel.updateBluetoothConnection(false)
-            mainViewModel.updateCurrentStreamId(null)
-            mainViewModel.updateIsPlaying(false)
+            bluetoothViewModel.updateConnectionState(BluetoothConnectionState.IDLE)
         }
         bluetoothViewModel.disconnect()
         listBluetoothDevice.clear()
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        lifecycleScope.launch {
+            unRegReceiver()
+        }
+    }
+    suspend fun unRegReceiver(){
+        if (bluetoothViewModel.isReceiverRegistered.first()){
+            unregisterReceiver(receiver)
+            bluetoothViewModel.changeIsReceiverRegistered(false)
+        }
+    }
 }
+

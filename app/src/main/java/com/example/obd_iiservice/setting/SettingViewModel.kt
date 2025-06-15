@@ -3,12 +3,13 @@ package com.example.obd_iiservice.setting
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.obd_iiservice.helper.PreferenceManager
+import com.example.obd_iiservice.setting.ui.mqtt.MQTTConfig
+import com.example.obd_iiservice.setting.ui.mqtt.PartialMQTTConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject

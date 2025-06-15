@@ -4,9 +4,16 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
 import android.util.Log
+import androidx.lifecycle.viewModelScope
+import com.example.obd_iiservice.app.ApplicationScope
+import com.example.obd_iiservice.helper.PreferenceManager
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.UUID
@@ -16,13 +23,24 @@ interface BluetoothRepository {
     suspend fun connectToDevice(address: String): BluetoothSocket?
     suspend fun updateBluetoothSocket(socket: BluetoothSocket?)
     suspend fun updateConnectionState(state: BluetoothConnectionState)
+    suspend fun checkDataForConnecting() : Boolean
+    suspend fun saveBluetoothAddress(address: String)
     val bluetoothSocket: StateFlow<BluetoothSocket?>
     val connectionState : StateFlow<BluetoothConnectionState>
+    val bluetoothAddress: StateFlow<String?>
 }
 
 class BluetoothRepositoryImpl @Inject constructor(
-    private val bluetoothAdapter: BluetoothAdapter
+    private val bluetoothAdapter: BluetoothAdapter,
+    private val preferenceManager: PreferenceManager,
+    @ApplicationScope private val applicationScope: CoroutineScope
 ) : BluetoothRepository {
+
+    private var _bluetoothAddress: StateFlow<String?> = preferenceManager.bluetoothAddress
+        .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), null)
+
+    override val bluetoothAddress: StateFlow<String?> = _bluetoothAddress
+
     private var _bluetoothSocket = MutableStateFlow<BluetoothSocket?>(null)
     override val bluetoothSocket : StateFlow<BluetoothSocket?> = _bluetoothSocket
 
@@ -36,6 +54,7 @@ class BluetoothRepositoryImpl @Inject constructor(
 
         return withContext(Dispatchers.IO) {
             val socket = device.createRfcommSocketToServiceRecord(uuid)
+//            val socket = device.createInsecureRfcommSocketToServiceRecord(uuid)
             bluetoothAdapter.cancelDiscovery()
             try {
                 socket.connect()
@@ -49,6 +68,10 @@ class BluetoothRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun saveBluetoothAddress(address: String) {
+        applicationScope.launch { preferenceManager.saveBluetoothAddress(address) }
+    }
+
     override suspend fun updateBluetoothSocket(socket: BluetoothSocket?) {
         _bluetoothSocket.emit(socket)
     }
@@ -56,6 +79,11 @@ class BluetoothRepositoryImpl @Inject constructor(
     override suspend fun updateConnectionState(state: BluetoothConnectionState) {
         _connectionState.emit(state)
     }
+
+    override suspend fun checkDataForConnecting() : Boolean {
+        return preferenceManager.checkDataForConnecting()
+    }
+
 }
 
 

@@ -1,4 +1,4 @@
-package com.example.obd_iiservice.setting
+package com.example.obd_iiservice.setting.ui.mqtt
 
 data class PartialMQTTConfig(
     val topic: String?,

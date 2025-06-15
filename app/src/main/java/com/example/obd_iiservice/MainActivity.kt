@@ -367,23 +367,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAndRequestPermissions() {
-        if (VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val permissions = mutableListOf<String>()
+        val permissionsToRequest = mutableListOf<String>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Untuk Android 12+
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+                permissionsToRequest.add(Manifest.permission.BLUETOOTH_SCAN)
             }
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+                permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
             }
+            Log.d("Android Version", "12+")
 
-            if (permissions.isNotEmpty()) {
-                requestPermissions(permissions.toTypedArray(), PERMISSION_REQUEST_BLUETOOTH)
-            } else {
-//                startDiscovery() // Aman langsung scanning
-                enableBluetooth()
-            }
         } else {
-//            startDiscovery(
+            // Untuk Android 11 dan di bawahnya, butuh izin lokasi
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+            Log.d("Android Version", "11-")
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            // Minta semua izin yang dibutuhkan sekaligus
+            requestPermissions(permissionsToRequest.toTypedArray(), PERMISSION_REQUEST_BLUETOOTH)
+        } else {
+            // Jika semua izin sudah ada, langsung jalankan prosesnya
             enableBluetooth()
         }
     }
@@ -394,14 +402,26 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        // Cek apakah ini respons dari permintaan izin kita
         if (requestCode == PERMISSION_REQUEST_BLUETOOTH) {
-            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                startDiscovery()
-//                enableBluetooth()
+            // Cek apakah semua izin yang diminta telah diberikan
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                // Jika semua izin diberikan, lanjutkan prosesnya
+                Log.d("Permissions", "All permissions granted. Starting process.")
+                enableBluetooth()
             } else {
-                Toast.makeText(this, "Bluetooth permission denied", Toast.LENGTH_SHORT).show()
+                // Jika ada izin yang ditolak, beri tahu pengguna
+                Toast.makeText(this, "Permission is required to find bluetooth devices.", Toast.LENGTH_SHORT).show()
             }
         }
+//        if (requestCode == PERMISSION_REQUEST_BLUETOOTH) {
+//            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+//                startDiscovery()
+////                enableBluetooth()
+//            } else {
+//                Toast.makeText(this, "Bluetooth permission denied", Toast.LENGTH_SHORT).show()
+//            }
+//        }
     }
 
     private fun enableBluetooth() {
@@ -422,16 +442,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            if (bluetoothViewModel.isReceiverRegistered.first() == false) {
+            if (!bluetoothViewModel.isReceiverRegistered.first()) {
                 registerReceiver(receiver, filter)
                 bluetoothViewModel.changeIsReceiverRegistered(true)
             }
         }
 
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_PERMISSION)
-            return
-        }
 //        deviceList.clear()
         listBluetoothDevice.clear()
 //        deviceListAdapter.notifyDataSetChanged()
@@ -609,7 +625,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     suspend fun unRegReceiver(){
-        if (bluetoothViewModel.isReceiverRegistered.first() == true){
+        if (bluetoothViewModel.isReceiverRegistered.first()){
             unregisterReceiver(receiver)
             bluetoothViewModel.changeIsReceiverRegistered(false)
         }
