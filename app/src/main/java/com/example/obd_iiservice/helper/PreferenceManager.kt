@@ -77,24 +77,50 @@ class PreferenceManager @Inject constructor(
         }
     }
 
-    suspend fun saveMqttHost(host: String) {
-        context.dataStore.edit { it[MQTT_HOST] = host }
+    suspend fun saveMqttHost(host: String?) {
+        context.dataStore.edit { preferences ->
+            if (host == null) {
+                preferences.remove(MQTT_HOST)
+            } else {
+                preferences[MQTT_HOST] = host
+            }
+        }
+//        context.dataStore.edit { it[MQTT_HOST] = host }
     }
 
     suspend fun saveMqttPort(port: Int) {
         context.dataStore.edit { it[MQTT_PORT] = port }
     }
 
-    suspend fun saveMqttUsername(username: String) {
-        context.dataStore.edit { it[MQTT_USERNAME] = username }
+    suspend fun saveMqttUsername(username: String?) {
+        context.dataStore.edit { preferences ->
+            if (username == null) {
+                preferences.remove(MQTT_USERNAME)
+            } else {
+                preferences[MQTT_USERNAME] = username
+            }
+        }
     }
 
-    suspend fun saveMqttPassword(password: String) {
-        context.dataStore.edit { it[MQTT_PASSWORD] = password }
+    suspend fun saveMqttPassword(password: String?) {
+        context.dataStore.edit { preferences ->
+            if (password == null) {
+                preferences.remove(MQTT_PASSWORD)
+            } else {
+                preferences[MQTT_PASSWORD] = password
+            }
+        }
     }
 
-    suspend fun saveMqttTopic(topic: String) {
-        context.dataStore.edit { it[MQTT_TOPIC] = topic }
+    suspend fun saveMqttTopic(topic: String?) {
+        context.dataStore.edit { preferences ->
+            if (topic == null) {
+                preferences.remove(MQTT_TOPIC)
+            } else {
+                preferences[MQTT_TOPIC] = topic
+            }
+        }
+//        context.dataStore.edit { it[MQTT_TOPIC] = topic }
     }
 
     suspend fun saveMqttAuto(isAuto: Boolean) {

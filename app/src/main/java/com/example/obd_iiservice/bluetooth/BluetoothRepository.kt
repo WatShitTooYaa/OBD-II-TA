@@ -8,9 +8,11 @@ import com.example.obd_iiservice.app.ApplicationScope
 import com.example.obd_iiservice.helper.PreferenceManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -24,9 +26,11 @@ interface BluetoothRepository {
     suspend fun updateConnectionState(state: BluetoothConnectionState)
     suspend fun checkDataForConnecting() : Boolean
     suspend fun saveBluetoothAddress(address: String?)
+    suspend fun updateReconnectingJob(job: Job?)
     val bluetoothSocket: StateFlow<BluetoothSocket?>
     val connectionState : StateFlow<BluetoothConnectionState>
     val bluetoothAddress: StateFlow<String?>
+    val reconnectingJob : StateFlow<Job?>
 }
 
 class BluetoothRepositoryImpl @Inject constructor(
@@ -44,6 +48,9 @@ class BluetoothRepositoryImpl @Inject constructor(
 
     private val _connectionState = MutableStateFlow(BluetoothConnectionState.IDLE)
     override val connectionState: StateFlow<BluetoothConnectionState> = _connectionState
+
+    private var _reconnectingJob = MutableStateFlow<Job?>(null)
+    override val reconnectingJob : StateFlow<Job?> = _reconnectingJob.asStateFlow()
 
     @SuppressLint("MissingPermission")
     override suspend fun connectToDevice(address: String): BluetoothSocket? {
@@ -80,6 +87,11 @@ class BluetoothRepositoryImpl @Inject constructor(
 
     override suspend fun checkDataForConnecting() : Boolean {
         return preferenceManager.checkDataForMQTTConnection()
+    }
+
+    override suspend fun updateReconnectingJob(job: Job?) {
+        _reconnectingJob.value?.cancel()
+        _reconnectingJob.emit(job)
     }
 
 }

@@ -10,6 +10,9 @@ package com.example.obd_iiservice.obd
 data class OBDItem(
     val label: String,       // e.g., "Throttle"
     var value: String,       // e.g., "75%"
-    var unit: String    // menentukan warna lingkaran status
-//    val iconResId: Int,      // R.drawable.icon_throttle
+    var unit: String,    // menentukan warna lingkaran status
+    var startValue: String,
+    var endValue : String,
+    var currValue: String,
 )
+//    val iconResId: Int,      // R.drawable.icon_throttle

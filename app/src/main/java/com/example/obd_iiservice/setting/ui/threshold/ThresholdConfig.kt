@@ -1,4 +1,4 @@
-package com.example.obd_iiservice.threshold
+package com.example.obd_iiservice.setting.ui.threshold
 
 data class ThresholdConfig(
     val rpm : Int,

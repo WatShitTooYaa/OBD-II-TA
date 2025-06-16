@@ -3,6 +3,8 @@ package com.example.obd_iiservice.dtc
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.obd_iiservice.obd.OBDJobState
+import com.example.obd_iiservice.obd.OBDRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,9 +13,15 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class DTCViewModel @Inject constructor() : ViewModel() {
+class DTCViewModel @Inject constructor(
+    private val obdRepository: OBDRepository
+) : ViewModel() {
     private var _listDTC = MutableStateFlow<List<DTCItem>>(emptyList())
     val listDTC : StateFlow<List<DTCItem>> = _listDTC.asStateFlow()
+
+    suspend fun updateOBDJobState(obdJobState: OBDJobState){
+        obdRepository.updateOBDJobState(obdJobState)
+    }
 
     fun parseAndSetDTC(rawResponse: String) {
         val dtcCodes = parseDTCResponse(rawResponse)

@@ -3,14 +3,12 @@ package com.example.obd_iiservice.ui.setting
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.example.obd_iiservice.databinding.ItemLayoutObdBinding
 import com.example.obd_iiservice.databinding.ItemSettingBinding
-import com.example.obd_iiservice.obd.OBDAdapter.ListViewHolder
 
-class AdapterSetting(
+class SettingAdapter (
     private val list : List<SettingItem>,
     private val onItemClick: (SettingItem) -> Unit
-) : RecyclerView.Adapter<AdapterSetting.ListViewHolder>() {
+) : RecyclerView.Adapter<SettingAdapter.ListViewHolder>() {
     class ListViewHolder(var binding: ItemSettingBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(

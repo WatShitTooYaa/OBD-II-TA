@@ -15,6 +15,7 @@ import com.example.obd_iiservice.bluetooth.BluetoothRepository
 import com.example.obd_iiservice.databinding.ActivityDtcBinding
 import com.example.obd_iiservice.helper.makeToast
 import com.example.obd_iiservice.helper.saveLogToFile
+import com.example.obd_iiservice.obd.OBDJobState
 import com.example.obd_iiservice.obd.OBDRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -85,15 +86,6 @@ class DTCActivity : AppCompatActivity() {
 
     @SuppressLint("MissingPermission")
     private fun connectAndFetchDTC() {
-//        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-//        val device = bluetoothAdapter?.bondedDevices?.firstOrNull { it.name.contains("OBD") }
-//
-//        if (device == null) {
-//            return
-//        }
-//
-//        val uuid = device.uuids.first().uuid
-
         if (bluetoothRepository.bluetoothSocket.value == null){
             makeToast(this, "Sotket Bluetooth tidak ditemukan")
             return
@@ -106,12 +98,20 @@ class DTCActivity : AppCompatActivity() {
                         "Perangkat OBD tidak ditemukan")
                     return@launch
                 }
+//                launch {
+////                    obdRepository.updateOBDJobState(OBDJobState.READING)
+//                    dtcViewModel.updateOBDJobState(OBDJobState.CHECK_ENGINE)
+//                }
                 val obdManager = OBDManager(socket)
 //                val response = obdManager.sendCommand()
                 val response = obdManager.getDTCs()
                 saveLogToFile(this@DTCActivity, "DTC response", "res", response)
                 dtcViewModel.parseAndSetDTC(response)
-                obdRepository.updateDoingJob(false)
+//                launch {
+////                    obdRepository.updateOBDJobState(OBDJobState.READING)
+//                    dtcViewModel.updateOBDJobState(OBDJobState.FREE)
+//                }
+//                obdRepository.updateDoingJob(false)
             } catch (e: Exception) {
                 e.printStackTrace()
                 makeToast(this@DTCActivity, "Gagal koneksi OBD")

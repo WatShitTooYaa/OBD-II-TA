@@ -14,13 +14,13 @@ import com.example.obd_iiservice.R
 import com.example.obd_iiservice.setting.ui.bluetooth.BluetoothActivity
 import com.example.obd_iiservice.databinding.FragmentSettingBinding
 import com.example.obd_iiservice.setting.ui.mqtt.MqttActivity
-import com.example.obd_iiservice.threshold.ThresholdActivity
+import com.example.obd_iiservice.setting.ui.threshold.ThresholdActivity
 import com.example.obd_iiservice.ui.decoration.RecyclerViewItemDecoration
 
 class SettingFragment : Fragment() {
     private var _binding: FragmentSettingBinding? = null
     private lateinit var rvSetting : RecyclerView
-    private lateinit var settingAdapter: AdapterSetting
+    private lateinit var settingAdapter: SettingAdapter
     private val binding get() = _binding!!
 
     companion object {
@@ -79,7 +79,7 @@ class SettingFragment : Fragment() {
                 MqttActivity::class.java
             ),
         )
-        settingAdapter = AdapterSetting(listSetting) { clickedSetting ->
+        settingAdapter = SettingAdapter(listSetting) { clickedSetting ->
             clickedSetting.targetActivity.let { activityClass ->
                 val intent = Intent(activity, activityClass)
                 startActivity(intent)

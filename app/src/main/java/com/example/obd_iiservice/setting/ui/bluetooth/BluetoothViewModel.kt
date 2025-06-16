@@ -38,8 +38,8 @@ class BluetoothViewModel @Inject constructor(
     val serviceState = obdRepository.serviceState
 
 
-    private var _reconnectingJob = MutableStateFlow<Job?>(null)
-    val reconnectingJob : StateFlow<Job?> = _reconnectingJob.asStateFlow()
+//    private var _reconnectingJob = MutableStateFlow<Job?>(null)
+    val reconnectingJob : StateFlow<Job?> = bluetoothRepository.reconnectingJob
 
     val bluetoothAddress = bluetoothRepository.bluetoothAddress
     val connectionState = bluetoothRepository.connectionState
@@ -179,8 +179,7 @@ class BluetoothViewModel @Inject constructor(
     }
 
     suspend fun updateReconnectingJob(job: Job?) {
-        _reconnectingJob.value?.cancel()
-        _reconnectingJob.emit(job)
+       bluetoothRepository.updateReconnectingJob(job)
     }
 
     suspend fun updatePreviousAddress(address: String) {

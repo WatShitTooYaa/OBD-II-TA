@@ -1,6 +1,5 @@
-package com.example.obd_iiservice.threshold
+package com.example.obd_iiservice.setting.ui.threshold
 
-import androidx.lifecycle.viewModelScope
 import com.example.obd_iiservice.helper.PreferenceManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -1,9 +1,9 @@
 package com.example.obd_iiservice
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -42,7 +42,7 @@ import com.example.obd_iiservice.obd.OBDForegroundService
 import com.example.obd_iiservice.obd.OBDViewModel
 import com.example.obd_iiservice.setting.SettingActivity
 import com.example.obd_iiservice.setting.SettingViewModel
-import com.example.obd_iiservice.threshold.ThresholdActivity
+import com.example.obd_iiservice.setting.ui.threshold.ThresholdActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -433,6 +433,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun startDiscovery(){
         val filter = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)

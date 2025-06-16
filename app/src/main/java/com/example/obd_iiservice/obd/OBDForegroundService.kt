@@ -18,7 +18,7 @@ import com.example.obd_iiservice.helper.makeToast
 import com.example.obd_iiservice.helper.saveLogToFile
 import com.example.obd_iiservice.internet.NetworkStatus
 import com.example.obd_iiservice.main.MainRepository
-import com.example.obd_iiservice.threshold.ThresholdRepository
+import com.example.obd_iiservice.setting.ui.threshold.ThresholdRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,17 +63,39 @@ class OBDForegroundService : Service() {
         serviceScope.launch {
             launch {
                 monitorThresholds()
-            }
-            launch {
-                obdRepository.updateMQTTJobState(MQTTJobState.FREE)
-            }
-            launch {
-                obdRepository.updateServiceState(ServiceState.RUNNING)
+                Log.d("onstartcmnd", "monitor threshold")
             }
             launch {
                 obdRepository.updateOBDJobState(OBDJobState.FREE)
+                Log.d("onstartcmnd", "obdjobstate")
             }
             launch {
+                obdRepository.updateMQTTJobState(MQTTJobState.FREE)
+                Log.d("onstartcmnd", "mqtt job")
+
+            }
+            launch {
+                obdRepository.updateServiceState(ServiceState.RUNNING)
+                Log.d("onstartcmnd", "service state")
+
+            }
+            launch {
+                bluetoothRepository.bluetoothSocket.collect { socket ->
+                    Log.d("DEBUG_FLOW", "bluetoothSocket emitted: ${socket != null}")
+                }
+            }
+            launch {
+                obdRepository.obdJobState.collect { state ->
+                    Log.d("DEBUG_FLOW", "obdJobState emitted: $state")
+                }
+            }
+            launch {
+                obdRepository.networkStatus.collect { status ->
+                    Log.d("DEBUG_FLOW", "networkStatus emitted: $status")
+                }
+            }
+            launch {
+                //fungsi observeConditional
                 combine(
                     bluetoothRepository.bluetoothSocket,
                     obdRepository.obdJobState,
@@ -82,13 +104,19 @@ class OBDForegroundService : Service() {
 //                    Pair(jobType, networkStatus)
                     Triple(socket, jobType, networkStatus)
                 }.collect { (socket, jobType, networkStatus) ->
+                    Log.d("triple", "socket:${socket.toString()}\njobType:${jobType}\nnetworkStatus${networkStatus}")
                     when(jobType){
                         OBDJobState.CHECK_ENGINE -> {
                             readJob?.cancel()
                             mqttJob?.cancel()
+                            Log.d("triple", "obdjobstate:checkengin")
                         }
                         OBDJobState.FREE -> {
+                            Log.d("triple", "obdjobstate:free beforesocket")
+
                             if (socket != null){
+                                Log.d("triple", "obdjobstate:free")
+
                                 //start reading
                                 readJob = startReading(applicationContext, socket.inputStream, socket.outputStream)
                                 launch {
@@ -130,10 +158,11 @@ class OBDForegroundService : Service() {
                         }
 
                         OBDJobState.READING -> {
-
+                            Log.d("triple", "obdjobstate:reading")
                         }
 
                         OBDJobState.ERROR -> {
+                            Log.d("triple", "obdjobstate:error")
 
                         }
                     }
@@ -194,7 +223,7 @@ class OBDForegroundService : Service() {
                         val parsedData = obdRepository.parseOBDResponse(response, context)
                         if (parsedData.isNotEmpty()) {
                             // Update StateFlow atau kirim ke server
-                            obdRepository.updateData(parsedData)
+//                            obdRepository.updateData(parsedData)
                             sendOBDData(parsedData) // Fungsi Anda untuk mengirim data
                         }
                     }

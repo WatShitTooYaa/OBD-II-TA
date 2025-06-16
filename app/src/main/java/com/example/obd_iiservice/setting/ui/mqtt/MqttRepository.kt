@@ -22,8 +22,8 @@ interface MqttRepository {
     fun saveMqttPort(port: Int)
     fun saveMqttUsername(username: String)
     fun saveMqttPassword(password: String)
-    fun saveMqttAutoRecon(isAuto: Boolean)
     fun saveMqttPortType(type: String)
+    fun saveMqttAutoRecon(isAuto: Boolean)
     fun saveDelayResponse(delay: Long)
     fun clearData()
 }
@@ -123,12 +123,12 @@ class MqttRepositoryImpl @Inject constructor(
         applicationScope.launch { preferenceManager.saveMqttPassword(password) }
     }
 
-    override fun saveMqttAutoRecon(isAuto: Boolean) {
-        applicationScope.launch { preferenceManager.saveMqttAuto(isAuto) }
-    }
-
     override fun saveMqttPortType(type: String) {
         applicationScope.launch { preferenceManager.saveMqttPortType(type) }
+    }
+
+    override fun saveMqttAutoRecon(isAuto: Boolean) {
+        applicationScope.launch { preferenceManager.saveMqttAuto(isAuto) }
     }
 
     override fun saveDelayResponse(delay: Long) {

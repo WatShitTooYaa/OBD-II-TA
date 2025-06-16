@@ -1,4 +1,4 @@
-package com.example.obd_iiservice.threshold
+package com.example.obd_iiservice.setting.ui.threshold
 
 import android.os.Bundle
 import android.util.Log
@@ -14,7 +14,6 @@ import com.example.obd_iiservice.R
 import com.example.obd_iiservice.databinding.ActivityThresholdBinding
 import com.example.obd_iiservice.helper.makeToast
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint

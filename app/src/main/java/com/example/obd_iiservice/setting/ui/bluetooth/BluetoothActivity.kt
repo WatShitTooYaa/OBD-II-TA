@@ -37,25 +37,18 @@ import com.example.obd_iiservice.R
 import com.example.obd_iiservice.bluetooth.BluetoothConnectionState
 import com.example.obd_iiservice.bluetooth.BluetoothDeviceAdapter
 import com.example.obd_iiservice.bluetooth.BluetoothDeviceItem
-import com.example.obd_iiservice.bluetooth.ObserveConnectionBluetooth
 import com.example.obd_iiservice.databinding.ActivityBluetoothBinding
-import com.example.obd_iiservice.dtc.DTCActivity
-import com.example.obd_iiservice.helper.makeToast
 import com.example.obd_iiservice.helper.saveLogToFile
-import com.example.obd_iiservice.log.LogViewActivity
 import com.example.obd_iiservice.obd.OBDForegroundService
 import com.example.obd_iiservice.obd.ServiceState
-import com.example.obd_iiservice.setting.SettingActivity
-import com.example.obd_iiservice.threshold.ThresholdActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
 @AndroidEntryPoint
 class BluetoothActivity : AppCompatActivity() {
     private lateinit var binding: ActivityBluetoothBinding
@@ -188,12 +181,13 @@ class BluetoothActivity : AppCompatActivity() {
                 BluetoothConnectionState.IDLE -> {
                     if (currentAddress == null) {
                         // Aksi untuk "Scan Devices..."
-                        if (!bluetoothAdapter.isEnabled) {
-                            val enableBtnIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                            enableBluetoothLauncher.launch(enableBtnIntent)
-                        } else {
-                            checkAndRequestPermissions()
-                        }
+//                        if (!bluetoothAdapter.isEnabled) {
+//                            val enableBtnIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+//                            enableBluetoothLauncher.launch(enableBtnIntent)
+//                        } else {
+//                            checkAndRequestPermissions()
+//                        }
+                        checkAndRequestPermissions()
                     } else {
                         // Aksi untuk "Connect"
                         connectToDevice(currentAddress)
@@ -240,9 +234,29 @@ class BluetoothActivity : AppCompatActivity() {
                                     Log.d("combine reconnect", "address null")
                                     binding.btnScanConnect.text = "Scan Devices..."
                                     binding.rvListDevices.visibility = View.VISIBLE
-                                } else {
-                                    Log.d("combine reconnect", "address not null")
-                                    binding.btnScanConnect.text = "Connect"
+                                }
+                                //ada address
+                                else {
+                                    //auto reconnect hidup
+                                    if (isAuto){
+                                        //job reconnect null
+                                        if (reconnectingJob == null){
+                                            lifecycleScope.launch {
+                                                launch {
+                                                    bluetoothViewModel.updateReconnectingJob(reconnectUntilSuccess(address))
+                                                }
+                                                launch {
+                                                    bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTING)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    //tidak auto reconnect
+                                    else{
+                                        binding.btnScanConnect.text = "Connect"
+
+                                    }
+//                                    Log.d("combine reconnect", "address not null")
                                 }
                             }
 
@@ -254,16 +268,20 @@ class BluetoothActivity : AppCompatActivity() {
 
                             BluetoothConnectionState.CONNECTED -> {
                                 binding.btnScanConnect.visibility = View.VISIBLE
-                                binding.btnScanConnect.text = "Disconnect"
                                 binding.btnScanConnect.isEnabled = !isAuto // Hanya bisa disconnect jika tidak auto-reconnect
-
+                                binding.btnScanConnect.text = "Disconnect"
+                                if (isAuto){
+                                    binding.btnScanConnect.text = "Connected"
+                                }
                                 // Sembunyikan daftar perangkat jika sudah terhubung
 //                                 binding.rvListDevices.visibility = View.GONE
                             }
 
                             BluetoothConnectionState.FAILED -> {
                                 // Kembali ke IDLE, collector akan menangani UI-nya
-                                bluetoothViewModel.updateConnectionState(BluetoothConnectionState.IDLE)
+                                lifecycleScope.launch {
+                                    bluetoothViewModel.updateConnectionState(BluetoothConnectionState.IDLE)
+                                }
                             }
                         }
                     }
@@ -372,15 +390,16 @@ class BluetoothActivity : AppCompatActivity() {
 
     @SuppressLint("MissingPermission")
     private val enableBluetoothLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { res ->
-        if (res.resultCode == RESULT_OK) {
-//            startDiscovery()
-            checkAndRequestPermissions()
-        } else {
-            Toast.makeText(this, "Bluetooth tidak diaktifkan", Toast.LENGTH_SHORT).show()
-        }
+    ActivityResultContracts.StartActivityForResult()
+) { result ->
+    if (result.resultCode == RESULT_OK) {
+        // Pengguna berhasil menyalakan Bluetooth.
+        // Langkah selanjutnya adalah mulai discovery.
+        startDiscovery()
+    } else {
+        Toast.makeText(this, "Bluetooth tidak diaktifkan", Toast.LENGTH_SHORT).show()
     }
+}
 
     private fun showRecycleView() {
         rvBluetooth.layoutManager = LinearLayoutManager(this)
@@ -439,6 +458,9 @@ class BluetoothActivity : AppCompatActivity() {
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
                 permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
             }
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
             Log.d("Android Version", "12+")
 
         } else {
@@ -449,47 +471,51 @@ class BluetoothActivity : AppCompatActivity() {
             Log.d("Android Version", "11-")
         }
 
+
         if (permissionsToRequest.isNotEmpty()) {
-            // Minta semua izin yang dibutuhkan sekaligus
             requestPermissions(permissionsToRequest.toTypedArray(), PERMISSION_REQUEST_BLUETOOTH)
         } else {
-            // Jika semua izin sudah ada, langsung jalankan prosesnya
-            enableBluetooth()
+            // Jika semua izin sudah ada, panggil fungsi "gerbang utama" kita.
+            proceedWithBluetoothProcess() // <-- UBAH INI
         }
     }
 
+    @SuppressLint("MissingPermission")
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_BLUETOOTH) {
-            // Cek apakah semua izin yang diminta telah diberikan
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                // Jika semua izin diberikan, lanjutkan prosesnya
-                Log.d("Permissions", "All permissions granted. Starting process.")
-                enableBluetooth()
+                // Jika izin diberikan, panggil fungsi "gerbang utama" kita.
+                proceedWithBluetoothProcess() // <-- UBAH INI
             } else {
-                // Jika ada izin yang ditolak, beri tahu pengguna
-                Toast.makeText(this, "Permission is required to find bluetooth devices.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Izin diperlukan untuk mencari perangkat bluetooth.", Toast.LENGTH_SHORT).show()
             }
         }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
-    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
-    private fun enableBluetooth() {
+    // Ganti nama dari 'enableBluetooth' menjadi lebih deskriptif
+    @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT])
+    private fun proceedWithBluetoothProcess() {
+        // 2. SETELAH izin dipastikan ada, BARULAH kita cek status adapter.
         if (!bluetoothAdapter.isEnabled) {
+            // Jika mati, minta pengguna untuk menyalakan.
+            // Aksi ini sekarang aman karena kita sudah punya izin BLUETOOTH_CONNECT.
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             enableBluetoothLauncher.launch(enableBtIntent)
         } else {
+            // Jika sudah hidup, langsung mulai discovery.
             startDiscovery()
         }
     }
 
-    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
-    private fun startDiscovery(){
+//    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
+@RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT])
+private fun startDiscovery(){
         val filter = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)
             addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
@@ -497,10 +523,15 @@ class BluetoothActivity : AppCompatActivity() {
             addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
         }
 
+        // Pastikan RecyclerView terlihat sebelum memulai scan
+        binding.rvListDevices.visibility = View.VISIBLE
+
         lifecycleScope.launch {
             if (!bluetoothViewModel.isReceiverRegistered.first()) {
                 registerReceiver(receiver, filter)
-                bluetoothViewModel.changeIsReceiverRegistered(true)
+                launch {
+                    bluetoothViewModel.changeIsReceiverRegistered(true)
+                }
                 Log.d("bluetooth", "isReceiverRegistered")
             }
         }
@@ -585,7 +616,15 @@ class BluetoothActivity : AppCompatActivity() {
 //                    testObdConnection()
                     startAndBindOBDService()
 //                    obdViewModel.updateBluetoothConnection(true)
-                    bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTED)
+                    lifecycleScope.launch {
+                        launch {
+                            bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTED)
+                        }
+                        launch {
+                            bluetoothViewModel.reconnectingJob.value?.cancel()
+                            bluetoothViewModel.updateReconnectingJob(null)
+                        }
+                    }
                     break // berhenti mencoba jika sudah terkoneksi
                 } else {
                     Log.e("Bluetooth", "Reconnect failed")
@@ -606,6 +645,7 @@ class BluetoothActivity : AppCompatActivity() {
 
 
     private val receiver = object : BroadcastReceiver() {
+        @SuppressLint("MissingPermission")
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 BluetoothDevice.ACTION_FOUND -> {
@@ -613,32 +653,26 @@ class BluetoothActivity : AppCompatActivity() {
                         intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
                     } else {
                         @Suppress("DEPRECATION")
-                        intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                     }
 
-                    if (ActivityCompat.checkSelfPermission(this@BluetoothActivity, Manifest.permission.BLUETOOTH)
-                        != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        ActivityCompat.requestPermissions(
-                            this@BluetoothActivity,
-                            arrayOf(Manifest.permission.BLUETOOTH),
-                            REQUEST_PERMISSION
-                        )
-                        return
-                    }
-
-                    Log.d("bluetooth", "Bluetooth Action Found")
+                    // HAPUS SEMUA BLOK 'if (checkSelfPermission...)' DARI SINI
 
                     device?.let {
-                        val name = it.name ?: "Unknown Device"
-                        val address = it.address
-                        val deviceItem = BluetoothDeviceItem(name = name, address = address)
-                        Log.d("BluetoothScan", "Device found: $name - $address")
-                        listBluetoothDevice.add(deviceItem)
-                        Log.d("device", deviceItem.toString())
-                        bluetoothDeviceAdapter.notifyItemInserted(listBluetoothDevice.size - 1)
+                        // Cek agar tidak menambahkan duplikat
+                        if (listBluetoothDevice.none { item -> item.address == it.address }) {
+                            val name = it.name ?: "Unknown Device" // it.name butuh BLUETOOTH_CONNECT
+                            val address = it.address
+                            val deviceItem = BluetoothDeviceItem(name = name, address = address)
+
+                            Log.d("BluetoothScan", "Device found: $name - $address")
+
+                            listBluetoothDevice.add(deviceItem)
+                            bluetoothDeviceAdapter.notifyItemInserted(listBluetoothDevice.size - 1)
+                        }
                     }
                 }
+
 
                 BluetoothAdapter.ACTION_STATE_CHANGED -> {
                     val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
@@ -702,4 +736,3 @@ class BluetoothActivity : AppCompatActivity() {
         }
     }
 }
-

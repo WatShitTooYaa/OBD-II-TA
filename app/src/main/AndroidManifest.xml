@@ -42,7 +42,7 @@
             android:name=".dtc.DTCActivity"
             android:exported="false" />
         <activity
-            android:name=".threshold.ThresholdActivity"
+            android:name=".setting.ui.threshold.ThresholdActivity"
             android:exported="false" />
         <activity
             android:name=".log.LogViewActivity"

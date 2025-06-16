@@ -1,4 +1,4 @@
-package com.example.obd_iiservice.threshold
+package com.example.obd_iiservice.setting.ui.threshold
 
 import com.example.obd_iiservice.helper.PreferenceManager
 import dagger.Module
