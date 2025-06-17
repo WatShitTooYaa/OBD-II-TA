@@ -13,6 +13,6 @@ data class OBDItem(
     var unit: String,    // menentukan warna lingkaran status
     var startValue: String,
     var endValue : String,
-    var currValue: String,
+    val threshold: String
 )
 //    val iconResId: Int,      // R.drawable.icon_throttle

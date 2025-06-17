@@ -62,12 +62,12 @@ interface OBDRepository {
 //    suspend fun readOBDData(input: InputStream, output: OutputStream, context: Context) : Map<String, String>
     suspend fun updateData(data: Map<String, String>)
     suspend fun updateBluetoothConnection(connect: Boolean)
-    suspend fun updateDoingJob(doing: Boolean)
+//    suspend fun updateDoingJob(doing: Boolean)
     // Fungsi BARU: Menghasilkan Flow berisi respons mentah
     fun listenForResponses(input: InputStream): Flow<String>
     // Fungsi parsing bisa kita buat public agar bisa diakses dari luar
     fun parseOBDResponse(response: String, context: Context): Map<String, String>
-    suspend fun sendCommand(output: OutputStream, command: String)
+    suspend fun sendCommand(output: OutputStream, command: String) : Boolean
     // Fungsi untuk service agar bisa mengupdate statusnya
     suspend fun updateServiceState(newState: ServiceState)
     // Fungsi untuk mengubah state obd
@@ -80,18 +80,12 @@ interface OBDRepository {
     // StateFlow yang bisa diamati oleh UI
     val serviceState: StateFlow<ServiceState>
     var obdData : StateFlow<Map<String, String>>
-    var isBluetoothConnected : StateFlow<Boolean>
+//    var isBluetoothConnected : StateFlow<Boolean>
     val networkStatus: Flow<NetworkStatus>
-    val isDoingJob : StateFlow<Boolean>
+//    val isDoingJob : StateFlow<Boolean>
     val obdJobState : StateFlow<OBDJobState>
     val mqttJobState : StateFlow<MQTTJobState>
     val obdItemsState : StateFlow<List<OBDItem>>
-//    suspend fun getDtcCodes(): List<String>
-//    suspend fun sendCommand(
-//        input : InputStream,
-//        output: OutputStream,
-//        command: String
-//    ) : String
 }
 
 class OBDRepositoryImpl @Inject constructor(
@@ -102,8 +96,8 @@ class OBDRepositoryImpl @Inject constructor(
     private val observer = NetworkConnectivityObserver(context)
     override val networkStatus = observer.networkStatus
 
-    private var _isDoingJob = MutableStateFlow<Boolean>(false)
-    override val isDoingJob: StateFlow<Boolean> = _isDoingJob.asStateFlow()
+//    private var _isDoingJob = MutableStateFlow<Boolean>(false)
+//    override val isDoingJob: StateFlow<Boolean> = _isDoingJob.asStateFlow()
 
     private var _serviceState = MutableStateFlow<ServiceState>(ServiceState.STOPPED)
     override val serviceState: StateFlow<ServiceState> = _serviceState
@@ -121,6 +115,45 @@ class OBDRepositoryImpl @Inject constructor(
     private val _obdData = MutableStateFlow<Map<String, String>>(emptyMap())
     override var obdData: StateFlow<Map<String, String>> = _obdData.asStateFlow()
 
+    init {
+        // 3. Luncurkan coroutine satu kali saat repository dibuat
+        applicationScope.launch {
+            // 4. Ambil nilai PERTAMA dari setiap flow secara suspend.
+            //    .first() akan menunggu sampai nilai pertama tersedia lalu berhenti.
+            val rpm = preferenceManager.rpmThreshold.first()
+            val speed = preferenceManager.speedThreshold.first()
+            val throttle = preferenceManager.throttleThreshold.first()
+            val temp = preferenceManager.tempThreshold.first()
+            val maf = preferenceManager.mafThreshold.first()
+            val fuel = preferenceManager.fuelThreshold.first()
+
+            // 5. Buat list final setelah semua nilai didapat
+            val finalList = listOf(
+                OBDItem("RPM", "0", "rpm", "0", "10000", threshold = rpm.toString()),
+                OBDItem("Speed", "0", "km/h", "0", "250", threshold = speed.toString()),
+                OBDItem("Throttle", "0", "%", "0", "100", threshold = throttle.toString()),
+                OBDItem("Temperature", "30", "°C", "30", "140", threshold = temp.toString()),
+                OBDItem("MAF", "0", "g/s", "0", "120", threshold = maf.toString()),
+                OBDItem("Fuel", "0", "Km/L", "0", "30", threshold = fuel.toString()),
+            )
+
+            // 6. Update StateFlow dengan list final. Ini hanya terjadi SEKALI.
+            _obdItemsState.value = finalList
+        }
+    }
+
+    // Fungsi helper untuk membuat list default saat inisialisasi
+    private fun createDefaultObdList(): List<OBDItem> {
+        return listOf(
+            OBDItem("RPM", "0", "rpm", "0", "10000", threshold = "0"),
+            OBDItem("Speed", "0", "km/h", "0", "250", threshold = "0"),
+            OBDItem("Throttle", "0", "%", "0", "100", threshold = "0"),
+            OBDItem("Temperature", "30", "°C", "30", "140", threshold = "0"),
+            OBDItem("MAF", "0", "g/s", "0", "120", threshold = "0"),
+            OBDItem("Fuel", "0", "Km/L", "0", "30", threshold = "0"),
+        )
+    }
+
     val obdList = listOf(
         OBDItem(
             "RPM",
@@ -128,7 +161,7 @@ class OBDRepositoryImpl @Inject constructor(
             "rpm",
             startValue = "0",
             endValue = "10000",
-            currValue = "0"
+            threshold = preferenceManager.rpmThreshold.toString()
         ),
         OBDItem(
             "Speed",
@@ -136,7 +169,7 @@ class OBDRepositoryImpl @Inject constructor(
             "km/h",
             startValue = "0",
             endValue = "250",
-            currValue = "0"
+            threshold = preferenceManager.speedThreshold.toString()
         ),
         OBDItem(
             "Throttle",
@@ -144,15 +177,15 @@ class OBDRepositoryImpl @Inject constructor(
             "%",
             startValue = "0",
             endValue = "100",
-            currValue = "0"
+            threshold = preferenceManager.throttleThreshold.toString()
         ),
         OBDItem(
             "Temperature",
-            "0",
+            "30",
             "°C",
-            startValue = "0",
+            startValue = "30",
             endValue = "140",
-            currValue = "0"
+            threshold = preferenceManager.tempThreshold.toString()
         ),
         OBDItem(
             "MAF",
@@ -160,19 +193,19 @@ class OBDRepositoryImpl @Inject constructor(
             "g/s",
             startValue = "0",
             endValue = "120",
-            currValue = "0"
+            threshold = preferenceManager.mafThreshold.toString()
         ),
         OBDItem(
-            "Fuel Consumption",
+            "Fuel",
             "0",
             "Km/L",
             startValue = "0",
             endValue = "30",
-            currValue = "0"
+            threshold = preferenceManager.fuelThreshold.toString()
         ),
     )
     // StateFlow internal yang menyimpan List<OBDItem> lengkap
-    private val _obdItemsState = MutableStateFlow<List<OBDItem>>(obdList)
+    private val _obdItemsState = MutableStateFlow<List<OBDItem>>(createDefaultObdList())
 
     // StateFlow publik yang akan diobservasi oleh Fragment
     override val obdItemsState: StateFlow<List<OBDItem>> = _obdItemsState.asStateFlow()
@@ -182,7 +215,7 @@ class OBDRepositoryImpl @Inject constructor(
 
     //gak kangge
     private val _isBluetoothConnected = MutableStateFlow<Boolean>(false)
-    override var isBluetoothConnected: StateFlow<Boolean> = _isBluetoothConnected.asStateFlow()
+//    override var isBluetoothConnected: StateFlow<Boolean> = _isBluetoothConnected.asStateFlow()
     //
 
     private val pidList = listOf("010C", "010D", "0111", "0105", "0110")
@@ -273,7 +306,7 @@ class OBDRepositoryImpl @Inject constructor(
                         "Error",
                         "Error while reading PID: $pid,\n $e"
                     )
-                    updateBluetoothConnection(false)
+//                    updateBluetoothConnection(false)
                 }
 
             }
@@ -308,11 +341,17 @@ class OBDRepositoryImpl @Inject constructor(
         }
     }
 
-    // Implementasi pengirim perintah
-    override suspend fun sendCommand(output: OutputStream, command: String) {
-        withContext(Dispatchers.IO) {
-            output.write((command + "\r").toByteArray())
-            output.flush()
+    // Fungsi ini sekarang mengembalikan true jika berhasil, false jika gagal.
+    override suspend fun sendCommand(output: OutputStream, command: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                output.write((command + "\r").toByteArray())
+                output.flush()
+                true // Berhasil
+            } catch (e: IOException) {
+                Log.e("OBD_COMMAND", "Koneksi terputus saat mengirim perintah: ${e.message}")
+                false // Gagal
+            }
         }
     }
 
@@ -331,47 +370,6 @@ class OBDRepositoryImpl @Inject constructor(
     override suspend fun checkDataForMQTTConnection(): Boolean {
         return preferenceManager.checkDataForMQTTConnection()
     }
-
-    override suspend fun updateDoingJob(doing: Boolean) {
-        _isDoingJob.emit(doing)
-    }
-
-
-
-    // Implementasi Reader
-//    override fun listenForResponses(input: InputStream): Flow<String> = callbackFlow {
-//        val readerJob = launch(Dispatchers.IO){
-//            val buffer = ByteArrayOutputStream()
-//            val temp = ByteArray(1024)
-//
-//            try {
-//                while (isActive) {
-//                    val len = input.read(temp)
-//                    if (len == -1) {
-//                        break // End of stream
-//                    }
-//                    buffer.write(temp, 0, len)
-//
-//                    // Cek jika kita sudah menerima prompt '>', yang menandakan akhir respons
-//                    val currentData = buffer.toString("UTF-8")
-//                    if (currentData.contains('>')) {
-//                        // Bersihkan dan kirim data ke flow
-//                        val cleanResponse = currentData.replace(">", "").trim()
-//                        if (cleanResponse.isNotEmpty()) {
-//                            trySend(cleanResponse) // Mengirim data ke pendengar/collector
-//                        }
-//                        buffer.reset() // Siapkan buffer untuk respons berikutnya
-//                    }
-//                }
-//            } catch (e: IOException) {
-//                // Koneksi terputus, tutup flow
-//                cancel("Connection lost", e)
-//            }
-//        }
-//
-//        // Saat flow dibatalkan (misalnya coroutine pengumpul berhenti), batalkan juga job reader
-//        awaitClose { readerJob.cancel() }
-//    }
 
     override fun listenForResponses(input: InputStream): Flow<String> = callbackFlow {
         val readerJob = launch(Dispatchers.IO) {
@@ -412,55 +410,6 @@ class OBDRepositoryImpl @Inject constructor(
 
         awaitClose { readerJob.cancel() }
     }
-
-    // Implementasi parser yang bisa dipanggil dari luar
-//    override fun parseOBDResponse(response: String, context: Context): Map<String, String> {
-//        val data = mutableMapOf<String, String>()
-//        val cleanResponse = response
-//            .replace("SEARCHING...", "", ignoreCase = true)
-//            .replace("\r", "")
-//            .replace("\n", "")
-//            .trim()
-//
-//        // Logika parsing yang sama seperti di readOBDData sebelumnya
-//        // dipindahkan ke sini. Contoh untuk RPM:
-//        if (cleanResponse.startsWith("41 0C")) {
-//            parseRegex(cleanResponse, "41 0C ([0-9A-Fa-f]{2}) ([0-9A-Fa-f]{2})")?.let {
-//                val rpm = (it[0] * 256 + it[1]) / 4
-////                data["Rpm"] = rpm.toString()
-//                data["RPM"] = rpm.toString()
-//            }
-//        } else if (cleanResponse.startsWith("41 0D")) {
-//            parseRegex(cleanResponse, "41 0D ([0-9A-Fa-f]{2})")?.let {
-//                val speed = it[0]
-//                data["Speed"] = speed.toString()
-//            }
-//        } else if (cleanResponse.startsWith("41 11")){
-//            parseRegex(cleanResponse, "41 11 ([0-9A-Fa-f]{2})")?.let {
-//                val throttle = (it[0] * 100) / 255
-//                data["Throttle"] = throttle.toString()
-//            }
-//        } else if (cleanResponse.startsWith("41 05")){
-//            parseRegex(cleanResponse, "41 05 ([0-9A-Fa-f]{2})")?.let {
-//                val temp = it[0] - 40
-//                data["Temperature"] = temp.toString()
-//            }
-//        } else if (cleanResponse.startsWith("41 10")){
-//            parseRegex(response, "41 10 ([0-9A-Fa-f]{2}) ([0-9A-Fa-f]{2})")?.let {
-//                val maf = (it[0] * 256 + it[1]) / 100.0
-////                data["MAF"] = "%.2f".format(Locale.US, maf)
-//                data["MAF"] = maf.toInt().toString()
-//            }
-//        } else {
-//            Log.w("OBD", "No parser for PID: $cleanResponse")
-//            saveLogToFile(context, "parsing", "Error", "No parser implemented for PID: $cleanResponse")
-//        }
-//        // ... tambahkan logika parsing untuk PID lainnya (Speed, Temp, dll)
-//
-//        onNewObdDataReceived(data)
-//
-//        return data
-//    }
 
     override fun parseOBDResponse(response: String, context: Context): Map<String, String> {
         val data = mutableMapOf<String, String>()
@@ -526,6 +475,8 @@ class OBDRepositoryImpl @Inject constructor(
             }
         }
 
+//        data["Fuel"] = (data.getValue("Speed").toInt() / (data.getValue("MAF").toInt() / 14.7 / 737 * 3600)).toString()
+
         onNewObdDataReceived(data)
         return data
     }
@@ -534,17 +485,70 @@ class OBDRepositoryImpl @Inject constructor(
         _obdData.emit(data)
     }
 
-    fun onNewObdDataReceived(newDataMap: Map<String, String>) {
+    private fun onNewObdDataReceived(newDataMap: Map<String, String>) {
         _obdItemsState.update { currentList ->
-            // Buat list baru dengan nilai yang diperbarui
+
+            // 1. DAPATKAN NILAI SPEED & MAF TERBARU
+            // Ambil nilai baru dari newDataMap. Jika tidak ada, gunakan nilai lama dari currentList.
+            val latestSpeedStr = newDataMap["Speed"] ?: currentList.find { it.label == "Speed" }?.value
+            val latestMafStr = newDataMap["MAF"] ?: currentList.find { it.label == "MAF" }?.value
+
+            var calculatedKml: String? = null
+
+            // 2. LAKUKAN KALKULASI HANYA SATU KALI
+            // Hanya lakukan kalkulasi jika kedua nilai yang dibutuhkan ada dan valid.
+            if (latestSpeedStr != null && latestMafStr != null) {
+                val speedInt = latestSpeedStr.toIntOrNull()
+                val mafInt = latestMafStr.toIntOrNull()
+
+                // Pastikan nilai valid dan MAF tidak nol untuk menghindari pembagian dengan nol
+                if (speedInt != null && mafInt != null && mafInt > 0) {
+                    try {
+                        // Rumus konsumsi bahan bakar (contoh)
+                        // MPG = (7.718 * Kecepatan (km/jam)) / MAF (gram/detik) -> konstanta ini untuk bensin
+                        // kml = MPG * 0.425
+                        // consume
+                        val consume = mafInt / 14.7
+                        // l/s
+                        val consumePerSecond = consume / 737
+
+                        val consumePerHour = consumePerSecond * 3600
+
+                        val kml = speedInt / consumePerHour
+//                        val mpg = (7.718 * speedInt) / mafInt
+//                        val kml = mpg * 0.425
+
+                        // Simpan hasil kalkulasi dalam format string dengan satu angka desimal
+                        calculatedKml = kml.toInt().toString()
+
+                    } catch (e: Exception) {
+                        Log.e("FuelCalc", "Error calculating fuel consumption: ${e.message}")
+                    }
+                } else if (speedInt != null && mafInt != null && mafInt == 0){
+                    calculatedKml = "0"
+                }
+            }
+
+            // 3. BUAT LIST BARU DENGAN NILAI YANG SUDAH DIPERBARUI
             currentList.map { obdItem ->
-                // Cek apakah item ini ada di data map yang baru.
-                // Jika ada, gunakan nilai baru. Jika tidak, pertahankan nilai lama.
-                val newValue = newDataMap[obdItem.label]
-                if (newValue != null) {
-                    obdItem.copy(currValue = newValue) // .copy() adalah cara aman untuk membuat instance baru
-                } else {
-                    obdItem // Tidak ada perubahan, kembalikan item yang sama
+                when (obdItem.label) {
+                    // KASUS KHUSUS: Untuk item "Fuel"
+                    "Fuel" -> {
+                        // Gunakan hasil kalkulasi jika ada, jika tidak, pertahankan nilai lama.
+//                        obdItem.copy(currValue = calculatedKml ?: obdItem.currValue)
+                        obdItem.copy(value = calculatedKml ?: obdItem.value)
+                    }
+                    // KASUS UMUM: Untuk semua item lainnya (RPM, Speed, dll.)
+                    else -> {
+                        val newValue = newDataMap[obdItem.label]
+                        if (newValue != null) {
+                            // Jika ada nilai baru di newDataMap, update item ini
+                            obdItem.copy(value = newValue)
+                        } else {
+                            // Jika tidak, pertahankan item seperti semula
+                            obdItem
+                        }
+                    }
                 }
             }
         }

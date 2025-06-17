@@ -7,6 +7,7 @@ import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
@@ -81,22 +82,6 @@ class ThresholdActivity : AppCompatActivity() {
         }
 
         binding.apply {
-//            for (list in listData){
-//                if (list == "RPM"){
-//                    setupSeekBar(this.seekBarRpm, this.textRpm, list)
-//                } else if (list == "Speed") {
-//                    setupSeekBar(this.seekBarSpeed, this.textSpeed, list)
-//                } else if (list == "Throttle") {
-//                    setupSeekBar(this.seekBarThrottle, this.textThrottle, list)
-//                } else if (list == "Temp"){
-//                    setupSeekBar(this.seekBarTemp, this.textTemp, list)
-//                } else if (list == "Maf"){
-//                    setupSeekBar(this.seekBarMaf, this.textMaf, list)
-//                } else {
-//                    return
-//                }
-//            }
-
             this.btnSaveThresholds.setOnClickListener {
                 // Lakukan sesuatu dengan threshold
                 Log.d("Thresholds", thresholdViewModel.thresholdKey.toString())
@@ -127,6 +112,8 @@ class ThresholdActivity : AppCompatActivity() {
     }
 
     private fun setupSeekBar(seekBar: SeekBar, textView: TextView, key: String, initialValue: Int) {
+        seekBar.thumb = ContextCompat.getDrawable(this, R.drawable.scrubber_control)
+        seekBar.progressDrawable = ContextCompat.getDrawable(this, R.drawable.scrubber_progress)
         seekBar.progress = initialValue
         textView.text = initialValue.toString()
         thresholdViewModel.thresholdKey[key] = initialValue

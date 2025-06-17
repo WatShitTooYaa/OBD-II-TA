@@ -166,32 +166,13 @@ class OBDViewModel @Inject constructor(
         return@withContext response.toString().replace("\r", "").replace(">", "").trim()
     }
 
-
-    private fun sendOBDData(data : Map<String, String>) {
-//        viewModelScope.launch {
-//            obdRepository.updateData(data)
-//        }
-        viewModelScope.launch {
-            val oldData = obdRepository.obdData.first()
-
-            val mergedData = oldData.toMutableMap().apply {
-                for ((key, value ) in data) {
-                    if (value.isNotBlank()) {
-                        this[key]= value
-                    }
-                }
-            }
-            obdRepository.updateData(mergedData)
-        }
-    }
-
 //    fun updateServiceState(newState: ServiceState){
 //        obdRepository.updateServiceState(newState)
 //    }
 
-    suspend fun updateBluetoothConnection(connect: Boolean){
-        obdRepository.updateBluetoothConnection(connect)
-    }
+//    suspend fun updateBluetoothConnection(connect: Boolean){
+//        obdRepository.updateBluetoothConnection(connect)
+//    }
 
     suspend fun updateServiceBound(bound: Boolean){
         _isServiceBound.emit(bound)

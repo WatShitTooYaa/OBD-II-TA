@@ -30,6 +30,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="14sp"
+            android:textColor="@color/hitam_pekat"
             android:textIsSelectable="true"
             android:text="Log will appear here." />
     </ScrollView>

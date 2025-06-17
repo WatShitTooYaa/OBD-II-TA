@@ -1,5 +1,6 @@
 package com.example.obd_iiservice.obd
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -23,16 +24,37 @@ class OBDAdapter(
         val item = getItem(position)
 
         holder.binding.apply {
+            if (item.label == "Fuel"){
+                tvItemObdType.text = "Fuel Con."
+            }
+            else {
+                tvItemObdType.text = item.label
+            }
             tvItemObdUnit.text = item.unit
-            tvItemObdType.text = item.label
-            tvItemObdValue.text = item.currValue
+            tvItemObdValue.text = item.value
+
 
             gauge1.apply {
                 // Pastikan tipe data sesuai (toFloat atau toInt)
                 startValue = item.startValue.toInt()
                 endValue = item.endValue.toInt()
-                value = item.currValue.toInt() // Konversi aman
+                value = item.value.toInt()
+                when(item.value > item.threshold){
+                    true -> {
+                        pointStartColor = R.color.gauge_point_end
+                        Log.d("Adapter", "true")
+                    }
+                    false -> {
+                        pointStartColor = R.color.green_second
+                        Log.d("Adapter", "False")
+                    }
+                }
+//                if (item.label == "Temperature"){
+//                    pointSize = 30
+//                }
+//                pointSize = 100
             }
+            Log.d("Adapter item", "${item.label} : ${item.threshold}")
         }
     }
 
@@ -55,54 +77,3 @@ object OBDItemDiffCallback : DiffUtil.ItemCallback<OBDItem>() {
         return oldItem == newItem
     }
 }
-
-//class OBDAdapter(
-//    private val obdItems: MutableList<OBDItem>,
-//    private val itemHeight: Int
-//) : RecyclerView.Adapter<OBDAdapter.ListViewHolder>() {
-//
-//    // Definisikan object konstanta untuk payload
-//    companion object {
-//        const val PAYLOAD_VALUE_UPDATE = "PAYLOAD_VALUE_UPDATE"
-//    }
-//
-//    override fun onCreateViewHolder(
-//        parent: ViewGroup,
-//        viewType: Int
-//    ): ListViewHolder {
-//        val binding = ItemLayoutObdBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-//        binding.root.layoutParams.height = itemHeight
-//        return ListViewHolder(binding)
-//    }
-//
-//    override fun onBindViewHolder(
-//        holder: ListViewHolder,
-//        position: Int
-//    ) {
-//        val item = obdItems[position]
-//        holder.binding.apply {
-//            tvItemObdUnit.text = item.unit
-//            tvItemObdType.text = item.label
-//            tvItemObdValue.text = item.value
-//            gauge1.apply {
-//                startValue = item.startValue.toInt()
-//                endValue = item.endValue.toInt()
-//                value = item.currValue.toInt()
-//            }
-//        }
-//    }
-//
-//    override fun getItemCount(): Int {
-//        return obdItems.size
-//    }
-//
-//    class ListViewHolder(var binding: ItemLayoutObdBinding) : RecyclerView.ViewHolder(binding.root)
-//    // Fungsi untuk mengupdate data di adapter
-//    fun updateData(newList: List<OBDItem>) {
-//        obdItems.clear()
-//        obdItems.addAll(newList)
-//        notifyDataSetChanged() // Beritahu RecyclerView untuk menggambar ulang semua item
-//    }
-//
-//
-//}

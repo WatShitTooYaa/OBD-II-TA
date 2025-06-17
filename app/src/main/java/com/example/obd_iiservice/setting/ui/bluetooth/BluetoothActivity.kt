@@ -74,6 +74,7 @@ class BluetoothActivity : AppCompatActivity() {
         setContentView(binding.root)
         // Atur Toolbar sebagai ActionBar
         setSupportActionBar(binding.topAppBar)
+        supportActionBar?.setDisplayShowTitleEnabled(false)
 
         // Amati status koneksi dari ViewModel atau Repository
         initUI()
@@ -113,9 +114,12 @@ class BluetoothActivity : AppCompatActivity() {
         }
 
         actionView?.setOnClickListener {
+            bluetoothViewModel.changeAutoReconnect(!isAuto)
+
             lifecycleScope.launch {
-                bluetoothViewModel.changeAutoReconnect(!isAuto)
+                bluetoothViewModel.updateReconnectingJob(null)
             }
+            binding.btnScanConnect.text = "Connect"
         }
         return super.onPrepareOptionsMenu(menu)
     }
@@ -285,95 +289,6 @@ class BluetoothActivity : AppCompatActivity() {
                             }
                         }
                     }
-//                    bluetoothViewModel.combineToReconnecting.collect { (reconnectingJob, address, connectionState, isAuto) ->
-//                        when(connectionState){
-//                            BluetoothConnectionState.IDLE -> {
-//                                //address kosong
-//                                if (address == null) {
-//                                    bluetoothViewModel.reconnectingJob.value?.cancel()
-//                                    bluetoothViewModel.updateReconnectingJob(null)
-//
-//                                    binding.btnScanConnect.apply {
-//                                        text = "Scan devices..."
-//                                        visibility = View.VISIBLE
-//                                        setOnClickListener {
-//                                            if (!bluetoothAdapter.isEnabled) {
-//                                                val enableBtnIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-//                                                enableBluetoothLauncher.launch(enableBtnIntent)
-//                                            } else {
-//                                                checkAndRequestPermissions()
-//                                            }
-//                                            makeToast(this@BluetoothActivity, "click scan")
-//                                        }
-//                                    }
-//                                    binding.rvListDevices.visibility = View.VISIBLE
-//                                }
-//                                //address ada
-//                                else {
-//                                    when(isAuto){
-//                                        //tidak auto reconnect
-//                                        false -> {
-//                                            binding.btnScanConnect.apply {
-//                                                text = "Connect"
-//                                                visibility = View.VISIBLE
-//                                                setOnClickListener {
-//                                                    connectToDevice(address)
-//                                                    Log.d("connect", "klik konek buton")
-//                                                }
-//                                            }
-//                                            binding.rvListDevices.visibility = View.VISIBLE
-//                                        }
-//                                        //auto reconnect
-//                                        true -> {
-//                                            //job reconnect kosong
-//                                            if (reconnectingJob == null){
-////                                                reconnectUntilSuccess(address)
-//                                                bluetoothViewModel.updateReconnectingJob(reconnectUntilSuccess(address))
-//                                                bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTING)
-//                                            } else {
-//                                                binding.btnScanConnect.apply {
-//                                                    text = "Connecting"
-//                                                    isEnabled = false
-//                                                }
-//                                            }
-//                                            binding.rvListDevices.visibility = View.VISIBLE
-//                                        }
-//                                    }
-//                                }
-//                            }
-//
-//                            BluetoothConnectionState.CONNECTING -> {
-//                                binding.btnScanConnect.apply {
-//                                    text = "Connecting"
-//                                    isEnabled = false
-//                                }
-//                            }
-//                            BluetoothConnectionState.CONNECTED -> {
-//                                when(isAuto){
-//                                    false -> {
-//                                        binding.btnScanConnect.apply {
-//                                            text = "Connected"
-//                                            isEnabled = true
-//                                            setOnClickListener {
-//                                                disconnectOrClose()
-//                                            }
-//                                        }
-////                                        binding.rvListDevices.visibility = View.GONE
-//                                    }
-//
-//                                    true -> {
-//                                        binding.btnScanConnect.apply {
-//                                            text = "Connected"
-//                                            isEnabled = false
-//                                        }
-//                                    }
-//                                }
-//                            }
-//                            BluetoothConnectionState.FAILED -> {
-//                                bluetoothViewModel.updateConnectionState(BluetoothConnectionState.IDLE)
-//                            }
-//                        }
-//                    }
                 }
 
                 launch {
@@ -514,36 +429,36 @@ class BluetoothActivity : AppCompatActivity() {
     }
 
 //    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
-@RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT])
-private fun startDiscovery(){
-        val filter = IntentFilter().apply {
-            addAction(BluetoothDevice.ACTION_FOUND)
-            addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
-            addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED)
-            addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
-        }
-
-        // Pastikan RecyclerView terlihat sebelum memulai scan
-        binding.rvListDevices.visibility = View.VISIBLE
-
-        lifecycleScope.launch {
-            if (!bluetoothViewModel.isReceiverRegistered.first()) {
-                registerReceiver(receiver, filter)
-                launch {
-                    bluetoothViewModel.changeIsReceiverRegistered(true)
-                }
-                Log.d("bluetooth", "isReceiverRegistered")
+    @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT])
+    private fun startDiscovery(){
+            val filter = IntentFilter().apply {
+                addAction(BluetoothDevice.ACTION_FOUND)
+                addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+                addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED)
+                addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
             }
-        }
-        Log.d("bluetooth", "Start discovery")
-//        deviceList.clear()
-        listBluetoothDevice.clear()
-//        deviceListAdapter.notifyDataSetChanged()
-        bluetoothDeviceAdapter.notifyDataSetChanged()
-        bluetoothAdapter.startDiscovery()
-        Toast.makeText(this, "Scanning bluetooth devices....", Toast.LENGTH_LONG).show()
 
-    }
+            // Pastikan RecyclerView terlihat sebelum memulai scan
+            binding.rvListDevices.visibility = View.VISIBLE
+
+            lifecycleScope.launch {
+                if (!bluetoothViewModel.isReceiverRegistered.first()) {
+                    registerReceiver(receiver, filter)
+                    launch {
+                        bluetoothViewModel.changeIsReceiverRegistered(true)
+                    }
+                    Log.d("bluetooth", "isReceiverRegistered")
+                }
+            }
+            Log.d("bluetooth", "Start discovery")
+    //        deviceList.clear()
+            listBluetoothDevice.clear()
+    //        deviceListAdapter.notifyDataSetChanged()
+            bluetoothDeviceAdapter.notifyDataSetChanged()
+            bluetoothAdapter.startDiscovery()
+            Toast.makeText(this, "Scanning bluetooth devices....", Toast.LENGTH_LONG).show()
+
+        }
 
     private fun connectToDevice(address: String) {
         // UUID default untuk SPP (Serial Port Profile)
@@ -587,11 +502,13 @@ private fun startDiscovery(){
 
 
     private fun reconnectUntilSuccess(address: String): Job? {
+        Log.d("Bluetooth", "reconnect")
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_CONNECT), REQUEST_PERMISSION)
             }
-            return null
+//            return null
         }
 
         return lifecycleScope.launch {

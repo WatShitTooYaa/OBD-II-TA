@@ -25,21 +25,29 @@
                 android:layout_height="200dp"
                 android:layout_margin="20dp"
                 android:padding="10dp"
-                app:gaugeStartValue="0"
-                app:gaugeEndValue="1000"
-                app:gaugePointSize="0"
-                app:gaugePointEndColor="#00ff00"
-                app:gaugePointStartColor="#4CAF50"
-                app:gaugeStartAngle="145"
+                app:gaugeStartValue="30"
+                app:gaugeEndValue="500"
+
+                app:gaugePointEndColor="@color/gauge_point_end"
+                app:gaugePointStartColor="@color/green_second"
                 app:gaugeStrokeCap="ROUND"
-                app:gaugeStrokeColor="#FF367A"
-                app:gaugeStrokeWidth="8dp"
+                app:gaugeStartAngle="145"
+                app:gaugeStrokeColor="#e8e2e1"
+                app:gaugeStrokeWidth="15dp"
                 app:gaugeSweepAngle="250"
+                app:gaugePointSize="0"
+
                 app:layout_constraintVertical_bias="0.3"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
+
+<!-- app:gaugeDividerSize="20"
+                app:gaugeDividerStep="100"
+                app:gaugeDividerColor="@color/black"
+                app:gaugeDividerDrawFirst="false"-->
+
 
             <androidx.constraintlayout.widget.Guideline
                 android:id="@+id/guideline2"
@@ -55,8 +63,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
                 android:elevation="6dp"
-                android:textColor="#757c7e"
+                android:textColor="@color/hitam_pekat"
                 android:text="3000"
+                android:textSize="20sp"
                 app:layout_constraintEnd_toEndOf="@+id/gauge1"
                 app:layout_constraintStart_toStartOf="@+id/gauge1"
                 app:layout_constraintTop_toTopOf="@+id/guideline2" />
@@ -67,8 +76,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
                 android:elevation="6dp"
-                android:textColor="#757c7e"
+                android:textColor="@color/hitam_pekat"
                 android:text="rpm"
+                android:textSize="25sp"
                 app:layout_constraintEnd_toEndOf="@+id/tv_item_obd_value"
                 app:layout_constraintStart_toStartOf="@+id/tv_item_obd_value"
                 app:layout_constraintTop_toBottomOf="@+id/tv_item_obd_value" />
@@ -86,7 +96,9 @@
                 android:layout_height="wrap_content"
                 android:elevation="6dp"
                 android:text="RPM"
-                android:textColor="#757c7e"
+                android:textStyle="bold"
+                android:textColor="@color/hitam_pekat"
+                android:textSize="25sp"
                 app:layout_constraintEnd_toEndOf="@+id/tv_item_obd_value"
                 app:layout_constraintStart_toStartOf="@+id/tv_item_obd_value"
                 app:layout_constraintTop_toTopOf="@+id/guideline3" />

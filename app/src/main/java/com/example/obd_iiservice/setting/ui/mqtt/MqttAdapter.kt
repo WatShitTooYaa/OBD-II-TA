@@ -2,6 +2,8 @@ package com.example.obd_iiservice.setting.ui.mqtt
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.obd_iiservice.databinding.ItemMqttBinding
 import com.example.obd_iiservice.databinding.ItemSettingBinding
@@ -9,33 +11,50 @@ import com.example.obd_iiservice.ui.setting.SettingAdapter
 import com.example.obd_iiservice.ui.setting.SettingItem
 
 class MqttAdapter(
-    private val list : List<MqttItem>,
-    private val onItemClick: (MqttItem) -> Unit
-) : RecyclerView.Adapter<MqttAdapter.ListViewHolder>() {
-    class ListViewHolder(var binding: ItemMqttBinding) : RecyclerView.ViewHolder(binding.root)
+    private val listener: OnMqttItemClickListener
+) : ListAdapter<MqttItem, MqttAdapter.MqttViewHolder>(MqttDiffCallback) {
 
-    override fun onCreateViewHolder(
-        parent: ViewGroup,
-        viewType: Int
-    ): ListViewHolder {
-        val binding = ItemMqttBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return ListViewHolder(binding)
+
+    interface OnMqttItemClickListener {
+        fun onItemClicked(item: MqttItem)
     }
 
-    override fun onBindViewHolder(holder: ListViewHolder, position: Int) {
-        val items = list[position]
-        holder.binding.apply {
-//            ivIconSetting.setImageResource(items.icon)
-            tvSettingLabel.text = items.title
-            tvSettingDescription.text = items.description
+    // ... ViewHolder class ...
+    class MqttViewHolder(private val binding: ItemMqttBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(item: MqttItem) {
+            binding.apply {
+                tvSettingLabel.text = item.title
+//                tvSettingDescription.text = item.description
+                tvSettingValue.text = item.displayValue
+            }
         }
+    }
+
+    override fun onBindViewHolder(holder: MqttViewHolder, position: Int) {
+        val item = getItem(position)
+        holder.bind(item)
         holder.itemView.setOnClickListener {
-            onItemClick(items)
+            listener.onItemClicked(item)
         }
     }
 
-    override fun getItemCount(): Int {
-        return list.size
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MqttViewHolder {
+        // 1. Dapatkan LayoutInflater dari konteks parent.
+        val inflater = LayoutInflater.from(parent.context)
+        // 2. Inflate layout XML item menggunakan ViewBinding.
+        val binding = ItemMqttBinding.inflate(inflater, parent, false)
+        // 3. Buat dan kembalikan instance MqttViewHolder.
+        return MqttViewHolder(binding)
     }
 
+}
+// DiffUtil untuk ListAdapter
+object MqttDiffCallback : DiffUtil.ItemCallback<MqttItem>() {
+    override fun areItemsTheSame(oldItem: MqttItem, newItem: MqttItem): Boolean {
+        return oldItem.action == newItem.action
+    }
+
+    override fun areContentsTheSame(oldItem: MqttItem, newItem: MqttItem): Boolean {
+        return oldItem == newItem
+    }
 }

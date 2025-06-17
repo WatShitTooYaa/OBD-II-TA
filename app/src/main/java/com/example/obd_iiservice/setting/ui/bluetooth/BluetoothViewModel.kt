@@ -59,7 +59,7 @@ class BluetoothViewModel @Inject constructor(
         )
     }
 
-    val isConnected : StateFlow<Boolean> = obdRepository.isBluetoothConnected
+//    val isConnected : StateFlow<Boolean> = obdRepository.isBluetoothConnected
 
     private var _isReceiverRegistered = MutableStateFlow<Boolean>(false)
     val isReceiverRegistered : StateFlow<Boolean> = _isReceiverRegistered
@@ -158,7 +158,7 @@ class BluetoothViewModel @Inject constructor(
 
     }
 
-    suspend fun changeAutoReconnect(isAuto: Boolean){
+    fun changeAutoReconnect(isAuto: Boolean){
         mqttRepository.saveMqttAutoRecon(isAuto)
     }
 

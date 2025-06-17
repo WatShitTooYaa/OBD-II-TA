@@ -138,11 +138,6 @@ class HomeFragment : Fragment() {
         // Ganti ke `true` jika Anda menginginkan margin di tepi luar juga.
     }
 
-    private fun loadDashboardData() {
-
-        // Panggil fungsi updateData di adapter
-//        obdAdapter.updateData(newItems)
-    }
 
     private fun observeDataOBD(){
         // Gunakan lifecycleScope untuk mengumpulkan flow dengan aman

@@ -23,4 +23,5 @@
     <color name="btn_color_disable">#54C392</color>"
     <color name="green_last">#54C392</color>
     <color name="red_circle_status">#ff2e2e</color>
+    <color name="gauge_point_end">#d4151f</color>
 </resources>

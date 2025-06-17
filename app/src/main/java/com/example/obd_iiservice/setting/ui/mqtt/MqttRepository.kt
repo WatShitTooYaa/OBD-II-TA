@@ -1,5 +1,6 @@
 package com.example.obd_iiservice.setting.ui.mqtt
 
+import androidx.lifecycle.viewModelScope
 import com.example.obd_iiservice.app.ApplicationScope
 import com.example.obd_iiservice.helper.PreferenceManager
 import kotlinx.coroutines.CoroutineScope
@@ -13,10 +14,11 @@ import javax.inject.Inject
 
 
 interface MqttRepository {
-    val mqttConfig: Flow<MQTTConfig>
+    val mqttConfig: Flow<List<MqttItem>>
     val isInitialized: StateFlow<Boolean>
     val mqttAutoReconnect: StateFlow<Boolean>
 
+    fun handleAction(action: MqttAction, value: Any)
     fun saveMqttTopic(topic: String)
     fun saveMqttHost(host: String)
     fun saveMqttPort(port: Int)
@@ -35,6 +37,7 @@ class MqttRepositoryImpl @Inject constructor(
     // Helper function untuk mengurangi boilerplate
 //    private fun <T> Flow<T?>.toState(initialValue: T?): StateFlow<T?> =
 //        stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), initialValue)
+
 
     private fun <T> Flow<T>.toState(initialValue: T): StateFlow<T> =
         stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), initialValue)
@@ -81,13 +84,24 @@ class MqttRepositoryImpl @Inject constructor(
     }
 
     override val mqttConfig = partialMQTTConfig.combine(mqttPortType) { partial, portType ->
-        MQTTConfig(
-            topic = partial.topic,
+        buildSettingsList(
             host = partial.host,
             port = partial.port,
             username = partial.username,
-            password = partial.password,
-            portType = portType
+            pass = partial.password,
+            topic = partial.topic,
+            type = portType
+        )
+    }
+
+    private fun buildSettingsList(host: String?, port: Int?, topic: String?, username: String?, pass: String?, type: String): List<MqttItem> {
+        return listOf(
+            MqttItem("Host", "Alamat server MQTT", MqttAction.EDIT_HOST, host),
+            MqttItem("Port", "Port server MQTT", MqttAction.EDIT_PORT, port?.toString() ?: "0"),
+            MqttItem("Topic", "Topic untuk subscribe/publish", MqttAction.EDIT_TOPIC, topic),
+            MqttItem("Username", "Username untuk otentikasi", MqttAction.EDIT_USERNAME, username?.ifEmpty { "Tidak diatur" }),
+            MqttItem("Password", "Password untuk otentikasi", MqttAction.EDIT_PASSWORD, if (pass?.isNotEmpty() == true) "********" else "Tidak diatur"),
+            MqttItem("Tipe Koneksi", "Protokol koneksi", MqttAction.EDIT_PORT_TYPE, type)
         )
     }
 
@@ -99,8 +113,19 @@ class MqttRepositoryImpl @Inject constructor(
         topic != null && host != null && port != null
     }.stateIn(applicationScope, SharingStarted.Eagerly, false)
 
-    fun saveBluetoothAddress(address: String) {
-        applicationScope.launch { preferenceManager.saveBluetoothAddress(address) }
+
+    // Fungsi pusat untuk menangani semua aksi dari UI
+    override fun handleAction(action: MqttAction, value: Any) {
+        applicationScope.launch {
+            when (action) {
+                MqttAction.EDIT_HOST -> preferenceManager.saveMqttHost(value as String)
+                MqttAction.EDIT_PORT -> preferenceManager.saveMqttPort(value as Int)
+                MqttAction.EDIT_TOPIC -> preferenceManager.saveMqttTopic(value as String)
+                MqttAction.EDIT_USERNAME -> preferenceManager.saveMqttUsername(value as String)
+                MqttAction.EDIT_PASSWORD -> preferenceManager.saveMqttPassword(value as String)
+                MqttAction.EDIT_PORT_TYPE -> preferenceManager.saveMqttPortType(value as String)
+            }
+        }
     }
 
     override fun saveMqttTopic(topic: String) {

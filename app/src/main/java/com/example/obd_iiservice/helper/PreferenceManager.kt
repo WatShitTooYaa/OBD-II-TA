@@ -41,6 +41,7 @@ class PreferenceManager @Inject constructor(
         val THROTTLE_THRESHOLD = intPreferencesKey("throttle_threshold")
         val TEMP_THRESHOLD = intPreferencesKey("temp_threshold")
         val MAF_THRESHOLD = doublePreferencesKey("maf_threshold")
+        val FUEL_THRESHOLD = intPreferencesKey("fuel_threshold")
     }
 
 
@@ -64,6 +65,7 @@ class PreferenceManager @Inject constructor(
     val throttleThreshold : Flow<Int> = context.dataStore.data.map { it[THROTTLE_THRESHOLD] ?: 0 }
     val tempThreshold : Flow<Int> = context.dataStore.data.map { it[TEMP_THRESHOLD] ?: 0 }
     val mafThreshold : Flow<Double> = context.dataStore.data.map { it[MAF_THRESHOLD] ?: 0.0}
+    val fuelThreshold : Flow<Int> = context.dataStore.data.map { it[FUEL_THRESHOLD] ?: 20 }
 
 
     //fungsi menyimpan data bluetooth dan mqtt
@@ -155,6 +157,10 @@ class PreferenceManager @Inject constructor(
 
     suspend fun saveMafThreshold(maf : Double) {
         context.dataStore.edit { it[MAF_THRESHOLD] = maf }
+    }
+
+    suspend fun saveFuelThreshold(fuel : Int) {
+        context.dataStore.edit { it[FUEL_THRESHOLD] = fuel }
     }
 
 

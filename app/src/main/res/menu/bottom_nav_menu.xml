@@ -10,7 +10,7 @@
     <item
         android:id="@+id/bot_nav_log"
         android:icon="@drawable/history_log"
-        android:title="@string/title_notifications" />
+        android:title="Log" />
 
     <item
         android:id="@+id/bot_nav_dtc"

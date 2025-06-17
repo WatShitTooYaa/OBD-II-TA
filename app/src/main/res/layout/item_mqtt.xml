@@ -45,7 +45,7 @@
         app:layout_constraintGuide_percent="0.5" />
 
     <TextView
-        android:id="@+id/tv_setting_description"
+        android:id="@+id/tv_setting_value"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_margin="10dp"

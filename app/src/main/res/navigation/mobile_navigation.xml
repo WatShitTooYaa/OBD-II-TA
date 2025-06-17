@@ -21,13 +21,13 @@
     <fragment
         android:id="@+id/bot_nav_dtc"
         android:name="com.example.obd_iiservice.ui.dtc.DTCFragment"
-        android:label="@string/title_dashboard"
+        android:label="DTC"
         tools:layout="@layout/fragment_dtc" />
 
     <fragment
         android:id="@+id/bot_nav_log"
         android:name="com.example.obd_iiservice.ui.log.LogFragment"
-        android:label="@string/title_notifications"
+        android:label="Log"
         tools:layout="@layout/fragment_log" />
 
     <fragment

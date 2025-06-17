@@ -19,56 +19,6 @@ class HomeViewModel @Inject constructor(
     obdRepository: OBDRepository
 ) : ViewModel() {
 
-    val obdList = listOf(
-        OBDItem(
-            "RPM",
-            "0",
-            "rpm",
-            startValue = "0",
-            endValue = "10000",
-            currValue = "0"
-        ),
-        OBDItem(
-            "Speed",
-            "0",
-            "km/h",
-            startValue = "0",
-            endValue = "250",
-            currValue = "0"
-        ),
-        OBDItem(
-            "Throttle",
-            "0",
-            "%",
-            startValue = "0",
-            endValue = "100",
-            currValue = "0"
-        ),
-        OBDItem(
-            "Temperature",
-            "0",
-            "°C",
-            startValue = "0",
-            endValue = "140",
-            currValue = "0"
-        ),
-        OBDItem(
-            "MAF",
-            "0",
-            "g/s",
-            startValue = "0",
-            endValue = "120",
-            currValue = "0"
-        ),
-        OBDItem(
-            "Fuel Consumption",
-            "0",
-            "Km/L",
-            startValue = "0",
-            endValue = "30",
-            currValue = "0"
-        ),
-    )
 
     // StateFlow internal yang menyimpan List<OBDItem> lengkap
 //    private val _obdItemsState = MutableStateFlow<List<OBDItem>>(obdList)

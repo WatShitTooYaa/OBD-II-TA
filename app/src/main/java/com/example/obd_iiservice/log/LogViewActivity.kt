@@ -44,7 +44,6 @@ class LogViewActivity : AppCompatActivity() {
     private fun showLog(context: Context) {
         val logText = readLogFromFile(context = context)
         binding.tvLogContent.text = logText
-
     }
 }
 

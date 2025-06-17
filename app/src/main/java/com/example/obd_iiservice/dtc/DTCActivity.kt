@@ -55,9 +55,9 @@ class DTCActivity : AppCompatActivity() {
         observeViewModel()
 
         binding.btnCheckDtc.setOnClickListener {
-            lifecycleScope.launch {
-                obdRepository.updateDoingJob(true)
-            }
+//            lifecycleScope.launch {
+//                obdRepository.updateDoingJob(true)
+//            }
             connectAndFetchDTC()
         }
     }

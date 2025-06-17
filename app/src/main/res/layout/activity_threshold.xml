@@ -1,6 +1,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#d6d6d6"
     android:id="@+id/threshold_main">
 
     <LinearLayout
@@ -12,6 +13,8 @@
 
         <!-- RPM -->
         <TextView
+            android:textColor="@color/black"
+
             android:text="RPM Threshold:"
             android:layout_height="wrap_content"
             android:layout_width="wrap_content" />
@@ -19,8 +22,12 @@
             android:id="@+id/seekBar_rpm"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:progressDrawable="@drawable/scrubber_progress"
+            android:thumb="@drawable/scrubber_control"
             android:max="8000" />
         <TextView
+            android:textColor="@color/black"
+
             android:id="@+id/text_rpm"
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"
@@ -29,6 +36,8 @@
 
         <!-- Speed -->
         <TextView
+            android:textColor="@color/black"
+
             android:text="Speed Threshold (km/h):"
             android:layout_height="wrap_content"
             android:layout_width="wrap_content" />
@@ -38,6 +47,8 @@
             android:layout_height="wrap_content"
             android:max="200" />
         <TextView
+            android:textColor="@color/black"
+
             android:id="@+id/text_speed"
             android:text="120"
             android:layout_height="wrap_content"
@@ -46,6 +57,8 @@
 
         <!-- Throttle -->
         <TextView
+            android:textColor="@color/black"
+
             android:text="Throttle Threshold (%):"
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"/>
@@ -55,6 +68,8 @@
             android:layout_height="wrap_content"
             android:max="100" />
         <TextView
+            android:textColor="@color/black"
+
             android:id="@+id/text_throttle"
             android:text="90"
             android:layout_marginBottom="16dp"
@@ -63,6 +78,8 @@
 
         <!-- Temp -->
         <TextView
+            android:textColor="@color/black"
+
             android:text="Temperature Threshold (°C):"
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"/>
@@ -72,6 +89,8 @@
             android:layout_height="wrap_content"
             android:max="120" />
         <TextView
+            android:textColor="@color/black"
+
             android:id="@+id/text_temp"
             android:text="100"
             android:layout_marginBottom="16dp"
@@ -80,6 +99,8 @@
 
         <!-- MAF -->
         <TextView
+            android:textColor="@color/black"
+
             android:text="MAF Threshold (g/s):"
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"/>
@@ -89,13 +110,15 @@
             android:layout_height="wrap_content"
             android:max="100" />
         <TextView
+            android:textColor="@color/black"
+
             android:id="@+id/text_maf"
             android:text="25"
             android:layout_marginBottom="16dp"
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"/>
 
-        <Button
+        <com.example.obd_iiservice.ui.button.ButtonCustom
             android:id="@+id/btn_save_thresholds"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

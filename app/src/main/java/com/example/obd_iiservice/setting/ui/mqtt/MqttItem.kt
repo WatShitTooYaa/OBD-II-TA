@@ -6,7 +6,7 @@ data class MqttItem(
     val title: String,
     val description: String,
     val action: MqttAction,
-    val displayValue: String // Nilai yang ditampilkan di UI
+    val displayValue: String? // Nilai yang ditampilkan di UI
 )
 
 // Enum yang mewakili setiap fungsi spesifik Anda

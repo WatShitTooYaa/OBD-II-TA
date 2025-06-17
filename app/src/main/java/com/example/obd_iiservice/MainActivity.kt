@@ -230,107 +230,107 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                launch {
-                    combine(
-                        settingViewModel.bluetoothAddress,
-                        bluetoothViewModel.isConnected,
-                        settingViewModel.mqttAutoRecon,
-                        bluetoothViewModel.reconnectingJob
-                    ) { address, isConnected, isAuto, reconnectingJob ->
-                        // Combine jadi Quadruple
-                        ObserveConnectionBluetooth(address, isConnected, isAuto, reconnectingJob)
-                    }.collect { (address, isConnected, isAuto, reconnectingJob) ->
-                        if (address != null && !isConnected && isAuto) {
-                            if (reconnectingJob?.isActive != true && settingViewModel.checkDataForConnecting()) {
-                                makeToast(this@MainActivity, "recon")
-                                bluetoothViewModel.updateReconnectingJob(reconnectUntilSuccess(address))
-                            } else if (settingViewModel.checkDataForConnecting() == false){
-                                makeToast(this@MainActivity, "topic atau port tidak boleh kosong")
-                                saveLogToFile(
-                                    this@MainActivity,
-                                    "reconnect",
-                                    "ERROR",
-                                    "Topic atau port tidak boleh kosong"
-                                )
-                                delay(1000)
-                            } else {
-                                makeToast(this@MainActivity, "error saat akan reconnecting otomatis")
-                                saveLogToFile(
-                                    this@MainActivity,
-                                    "reconnect",
-                                    "ERROR",
-                                    "error saat akan reconnecting otomatis")
-                            }
-                        } else {
-                            bluetoothViewModel.updateReconnectingJob(null)
-                        }
-
-                        // Pengecekan untuk disconnect jika address == null atau isAuto berubah
-                        val addressChangedToNull = bluetoothViewModel.previousAddress.first() != address && address == null
-                        val isAutoChanged = bluetoothViewModel.previousIsAuto.first() != isAuto
-
-                        if ((addressChangedToNull || isAutoChanged) && (address == null || !isAuto)) {
-                            makeToast(this@MainActivity, "disconnect when address == null or isAuto == false")
-                            disconnectOrClose()
-                        }
-
-                        // Simpan nilai saat ini sebagai nilai sebelumnya
-//                        previousAddress = address
-//                        previousIsAuto = isAuto
-                        address?.let { bluetoothViewModel.updatePreviousAddress(it) }
-                        isAuto.let { bluetoothViewModel.updatePreviousIsAuto(it) }
-
-                        address?.let { binding.tvAddressBluetooth.text = it } ?: "-"
-                        // Update UI
-                        //jika address tidak ada dan terputus (kondisi awal)
-                        if (address == null && !isConnected){
-                            makeToast(this@MainActivity, "address tidak ada dan terputus")
-                            binding.rvListDevices.visibility = View.VISIBLE
-                            binding.llDashboard.visibility = View.GONE
-                            binding.btnScanIfAutoReconTrue.visibility = View.VISIBLE
-                            binding.btnScanIfAutoReconFalse.visibility = View.VISIBLE
-                            binding.rvListDevices.visibility = View.VISIBLE
-                            binding.btnConnectIfAutoReconFalse.visibility = View.GONE
-                        }
-                        //jika address ada dan terhubung
-                        else if (address != null && isConnected) {
-                            makeToast(this@MainActivity, "address ada dan terhubung")
-                            if (isAuto){
-//                                binding.btnScanIfAutoReconFalse.visibility = View.GONE
-//                                binding.btnDisconnectIfAutoReconFalse.visibility = View.VISIBLE
-                                binding.btnConnectIfAutoReconTrue.visibility = View.VISIBLE
-                                binding.btnConnectIfAutoReconTrue.text = "Connected"
-                            } else {
-                                binding.btnDisconnectIfAutoReconFalse.visibility = View.VISIBLE
-
-                            }
-                            binding.btnScanIfAutoReconFalse.visibility = View.GONE
-                            binding.btnScanIfAutoReconTrue.visibility = View.GONE
-                            binding.rvListDevices.visibility = View.GONE
-                            binding.btnConnectIfAutoReconFalse.visibility = View.GONE
-                            binding.rvListDevices.visibility = View.GONE
-                            binding.llDashboard.visibility = View.VISIBLE
-                        }
-                        //jika address ada namun terputus
-                        else if (address != null && !isConnected){
-                            makeToast(this@MainActivity, "address ada namun terputus")
-
-                            if (!isAuto){
-                                binding.btnConnectIfAutoReconFalse.visibility = View.VISIBLE
-                                binding.btnDisconnectIfAutoReconFalse.visibility = View.GONE
-                            } else {
-                                binding.btnScanIfAutoReconTrue.visibility = View.GONE
-                                binding.btnConnectIfAutoReconTrue.visibility = View.VISIBLE
-                                binding.btnConnectIfAutoReconTrue.isEnabled = false
-                                binding.btnConnectIfAutoReconTrue.text = "Reconnecting..."
-                            }
-                            binding.rvListDevices.visibility = View.GONE
-                            binding.llDashboard.visibility = View.GONE
+//                launch {
+//                    combine(
+//                        settingViewModel.bluetoothAddress,
+//                        bluetoothViewModel.isConnected,
+//                        settingViewModel.mqttAutoRecon,
+//                        bluetoothViewModel.reconnectingJob
+//                    ) { address, isConnected, isAuto, reconnectingJob ->
+//                        // Combine jadi Quadruple
+//                        ObserveConnectionBluetooth(address, isConnected, isAuto, reconnectingJob)
+//                    }.collect { (address, isConnected, isAuto, reconnectingJob) ->
+//                        if (address != null && !isConnected && isAuto) {
+//                            if (reconnectingJob?.isActive != true && settingViewModel.checkDataForConnecting()) {
+//                                makeToast(this@MainActivity, "recon")
+//                                bluetoothViewModel.updateReconnectingJob(reconnectUntilSuccess(address))
+//                            } else if (settingViewModel.checkDataForConnecting() == false){
+//                                makeToast(this@MainActivity, "topic atau port tidak boleh kosong")
+//                                saveLogToFile(
+//                                    this@MainActivity,
+//                                    "reconnect",
+//                                    "ERROR",
+//                                    "Topic atau port tidak boleh kosong"
+//                                )
+//                                delay(1000)
+//                            } else {
+//                                makeToast(this@MainActivity, "error saat akan reconnecting otomatis")
+//                                saveLogToFile(
+//                                    this@MainActivity,
+//                                    "reconnect",
+//                                    "ERROR",
+//                                    "error saat akan reconnecting otomatis")
+//                            }
+//                        } else {
+//                            bluetoothViewModel.updateReconnectingJob(null)
+//                        }
+//
+//                        // Pengecekan untuk disconnect jika address == null atau isAuto berubah
+//                        val addressChangedToNull = bluetoothViewModel.previousAddress.first() != address && address == null
+//                        val isAutoChanged = bluetoothViewModel.previousIsAuto.first() != isAuto
+//
+//                        if ((addressChangedToNull || isAutoChanged) && (address == null || !isAuto)) {
+//                            makeToast(this@MainActivity, "disconnect when address == null or isAuto == false")
+//                            disconnectOrClose()
+//                        }
+//
+//                        // Simpan nilai saat ini sebagai nilai sebelumnya
+////                        previousAddress = address
+////                        previousIsAuto = isAuto
+//                        address?.let { bluetoothViewModel.updatePreviousAddress(it) }
+//                        isAuto.let { bluetoothViewModel.updatePreviousIsAuto(it) }
+//
+//                        address?.let { binding.tvAddressBluetooth.text = it } ?: "-"
+//                        // Update UI
+//                        //jika address tidak ada dan terputus (kondisi awal)
+//                        if (address == null && !isConnected){
+//                            makeToast(this@MainActivity, "address tidak ada dan terputus")
 //                            binding.rvListDevices.visibility = View.VISIBLE
 //                            binding.llDashboard.visibility = View.GONE
-                        }
-                    }
-                }
+//                            binding.btnScanIfAutoReconTrue.visibility = View.VISIBLE
+//                            binding.btnScanIfAutoReconFalse.visibility = View.VISIBLE
+//                            binding.rvListDevices.visibility = View.VISIBLE
+//                            binding.btnConnectIfAutoReconFalse.visibility = View.GONE
+//                        }
+//                        //jika address ada dan terhubung
+//                        else if (address != null && isConnected) {
+//                            makeToast(this@MainActivity, "address ada dan terhubung")
+//                            if (isAuto){
+////                                binding.btnScanIfAutoReconFalse.visibility = View.GONE
+////                                binding.btnDisconnectIfAutoReconFalse.visibility = View.VISIBLE
+//                                binding.btnConnectIfAutoReconTrue.visibility = View.VISIBLE
+//                                binding.btnConnectIfAutoReconTrue.text = "Connected"
+//                            } else {
+//                                binding.btnDisconnectIfAutoReconFalse.visibility = View.VISIBLE
+//
+//                            }
+//                            binding.btnScanIfAutoReconFalse.visibility = View.GONE
+//                            binding.btnScanIfAutoReconTrue.visibility = View.GONE
+//                            binding.rvListDevices.visibility = View.GONE
+//                            binding.btnConnectIfAutoReconFalse.visibility = View.GONE
+//                            binding.rvListDevices.visibility = View.GONE
+//                            binding.llDashboard.visibility = View.VISIBLE
+//                        }
+//                        //jika address ada namun terputus
+//                        else if (address != null && !isConnected){
+//                            makeToast(this@MainActivity, "address ada namun terputus")
+//
+//                            if (!isAuto){
+//                                binding.btnConnectIfAutoReconFalse.visibility = View.VISIBLE
+//                                binding.btnDisconnectIfAutoReconFalse.visibility = View.GONE
+//                            } else {
+//                                binding.btnScanIfAutoReconTrue.visibility = View.GONE
+//                                binding.btnConnectIfAutoReconTrue.visibility = View.VISIBLE
+//                                binding.btnConnectIfAutoReconTrue.isEnabled = false
+//                                binding.btnConnectIfAutoReconTrue.text = "Reconnecting..."
+//                            }
+//                            binding.rvListDevices.visibility = View.GONE
+//                            binding.llDashboard.visibility = View.GONE
+////                            binding.rvListDevices.visibility = View.VISIBLE
+////                            binding.llDashboard.visibility = View.GONE
+//                        }
+//                    }
+//                }
             }
         }
     }
@@ -473,7 +473,7 @@ class MainActivity : AppCompatActivity() {
                 binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
                 lifecycleScope.launch {
                     settingViewModel.saveBluetoothAddress(address)
-                    obdViewModel.updateBluetoothConnection(true)
+//                    obdViewModel.updateBluetoothConnection(true)
                 }
                 Toast.makeText(this, "Connected to ${device?.name}", Toast.LENGTH_SHORT).show()
                 saveLogToFile(this, "Connect Bluetooth", "OK", "Connected to ${device?.name}")
@@ -500,7 +500,7 @@ class MainActivity : AppCompatActivity() {
         return lifecycleScope.launch {
             var attempt = 0
 //            val maxAttempts = 5
-            while (bluetoothViewModel.isConnected.value == false) {
+            while (bluetoothViewModel.bluetoothSocket.value != null) {
                 Log.d("Bluetooth", "Attempt reconnect: $attempt")
 
                 val success = bluetoothViewModel.connectToDeviceSuspend(address)
@@ -517,7 +517,7 @@ class MainActivity : AppCompatActivity() {
                     )
 //                    testObdConnection()
                     startAndBindOBDService()
-                    obdViewModel.updateBluetoothConnection(true)
+//                    obdViewModel.updateBluetoothConnection(true)
                     break // berhenti mencoba jika sudah terkoneksi
                 } else {
                     Log.e("Bluetooth", "Reconnect failed")
@@ -608,7 +608,7 @@ class MainActivity : AppCompatActivity() {
             stopService(obdViewModel.serviceIntent.value)
         }
         lifecycleScope.launch {
-            obdViewModel.updateBluetoothConnection(false)
+//            obdViewModel.updateBluetoothConnection(false)
             mainViewModel.updateCurrentStreamId(null)
             mainViewModel.updateIsPlaying(false)
         }

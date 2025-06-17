@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.obd_iiservice.R
 import com.example.obd_iiservice.app.ApplicationScope
+import com.example.obd_iiservice.bluetooth.BluetoothConnectionState
 import com.example.obd_iiservice.bluetooth.BluetoothRepository
 import com.example.obd_iiservice.helper.MqttHelper
 import com.example.obd_iiservice.helper.PreferenceManager
@@ -25,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -32,9 +34,11 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -77,7 +81,6 @@ class OBDForegroundService : Service() {
             launch {
                 obdRepository.updateServiceState(ServiceState.RUNNING)
                 Log.d("onstartcmnd", "service state")
-
             }
             launch {
                 bluetoothRepository.bluetoothSocket.collect { socket ->
@@ -202,29 +205,61 @@ class OBDForegroundService : Service() {
     fun startReading(context: Context, input: InputStream, output: OutputStream): Job? {
         readJob?.cancel()
 
-        // Daftar PID yang ingin dibaca secara berulang
         val pidList = listOf("010C", "010D", "0111", "0105", "0110")
 
         readJob = serviceScope.launch {
-            // --- Tahap Inisialisasi ---
-            val initCmds = listOf("ATZ", "ATE0", "ATH1", "ATSP0", "0100")
-            for (cmd in initCmds) {
-                obdRepository.sendCommand(output, cmd)
-                delay(400) // Delay singkat masih dibutuhkan untuk perintah AT
+            // --- TAHAP PERSIAPAN SINKRONISASI ---
+            // 1. Buat Channel sebagai "kotak surat" antara listener dan pengirim.
+            val responseChannel = Channel<String>(Channel.UNLIMITED)
+
+            // 2. Mulai listener SEMENTARA yang tugasnya hanya memasukkan semua respons ke dalam channel.
+            val initListenerJob = launch {
+                obdRepository.listenForResponses(input)
+                    .collect { response ->
+                        responseChannel.send(response)
+                    }
             }
 
-            // --- Tahap Memulai Listener ---
-            // Jalankan listener di coroutine terpisah agar tidak memblokir loop pengirim
+            // --- TAHAP INISIALISASI SEKUENSIAL ---
+            Log.d("OBD_INIT", "Memulai tahap inisialisasi...")
+            val initCmds = listOf("ATZ", "ATE0", "ATH1", "ATSP0", "0100")
+            for (cmd in initCmds) {
+                // 3. Kirim perintah seperti biasa.
+                obdRepository.sendCommand(output, cmd)
+
+                // 4. Tunggu respons dari channel.
+                //    receive() adalah suspend function, ia akan "berhenti" di sini sampai ada pesan masuk.
+                //    Kita beri timeout untuk mencegah aplikasi macet jika tidak ada respons.
+                val response = withTimeoutOrNull(2000) { // Timeout 2 detik
+                    responseChannel.receive()
+                }
+
+                // 5. Cetak (Log) perintah dan responsnya.
+                if (response != null) {
+                    Log.d("OBD_INIT", "Cmd: '$cmd' -> Resp: '$response'")
+                } else {
+                    Log.w("OBD_INIT", "Cmd: '$cmd' -> Tidak ada respons (timeout)")
+                }
+
+                // Delay singkat tetap berguna untuk beberapa perintah AT
+                delay(200)
+            }
+
+            // 6. Hentikan listener sementara karena tahap inisialisasi selesai.
+            initListenerJob.cancel()
+            Log.d("OBD_INIT", "Tahap inisialisasi selesai.")
+
+
+            // --- TAHAP MEMULAI LISTENER UTAMA (untuk PID) ---
+            // Kode Anda selanjutnya dimulai di sini.
             val listenerJob = launch {
                 obdRepository.listenForResponses(input)
                     .collect { response ->
-                        // Setiap kali respons diterima, kita parse dan update data
-                        Log.d("OBD_RESPONSE", "Raw: $response")
+//                        Log.d("OBD_RESPONSE", "Raw: $response")
                         val parsedData = obdRepository.parseOBDResponse(response, context)
+
                         if (parsedData.isNotEmpty()) {
-                            // Update StateFlow atau kirim ke server
-//                            obdRepository.updateData(parsedData)
-                            sendOBDData(parsedData) // Fungsi Anda untuk mengirim data
+                            sendOBDData(parsedData)
                         }
                     }
             }
@@ -233,21 +268,23 @@ class OBDForegroundService : Service() {
                 obdRepository.updateOBDJobState(OBDJobState.READING)
             }
 
-            // --- Tahap Loop Pengirim Perintah ---
-            // Loop ini sekarang hanya bertugas mengirim perintah secara berurutan
+            // --- TAHAP LOOP PENGIRIM PERINTAH (PID) ---
             while (isActive) {
                 for (pid in pidList) {
-                    if (!isActive) break // Cek jika job sudah dibatalkan
-                    obdRepository.sendCommand(output, pid)
-                    // TIDAK ADA DELAY DI SINI!
-                    // Kita akan menunggu secara alami sampai respons diterima oleh listener
-                    // Namun, kita perlu sedikit jeda agar tidak terlalu cepat
-                    // dan agar listener sempat memproses.
-                    delay(100) // Delay minimal untuk mencegah "command overlapping"
+                    if (!isActive) break
+                    val commandSentSuccessfully = obdRepository.sendCommand(output, pid)
+
+                    if (!commandSentSuccessfully) {
+                        Log.e("OBD_READING", "Gagal mengirim perintah, koneksi mungkin terputus.")
+                        // ... (logika error handling Anda) ...
+                        this.cancel()
+                        break
+                    }
+                    delay(100)
                 }
             }
 
-            // Pastikan listener juga berhenti saat job utama selesai
+            // ... (kode cleanup Anda) ...
             launch {
                 obdRepository.updateOBDJobState(OBDJobState.FREE)
             }
@@ -256,20 +293,46 @@ class OBDForegroundService : Service() {
         return readJob
     }
 
+
     private fun sendOBDData(data : Map<String, String>) {
-//        viewModelScope.launch {
-//            obdRepository.updateData(data)
-//        }
         serviceScope.launch {
+            // Ambil data lengkap yang sudah ada
             val oldData = obdRepository.obdData.first()
 
+            // Gabungkan data lama dengan data baru yang baru saja di-parse
             val mergedData = oldData.toMutableMap().apply {
-                for ((key, value ) in data) {
-                    if (value.isNotBlank()) {
-                        this[key]= value
+                putAll(data)
+            }
+
+            // --- LAKUKAN KALKULASI DI SINI ---
+            // Gunakan .get() yang mengembalikan null jika kunci tidak ada, agar aman.
+            val speedStr = mergedData["Speed"]
+            val mafStr = mergedData["MAF"]
+
+            // Hanya lakukan kalkulasi jika kedua nilai yang dibutuhkan ada dan valid.
+            if (speedStr != null && mafStr != null) {
+                val speedInt = speedStr.toIntOrNull()
+                val mafInt = mafStr.toIntOrNull()
+
+                if (speedInt != null && mafInt != null && mafInt > 0) {
+                    try {
+                        // Rumus konsumsi bahan bakar (contoh, sesuaikan jika perlu)
+                        // MPG = (7.718 * VSS * 1) / (MAF * 1)
+                        // kml = MPG * 0.425
+                        val mpg = (7.718 * speedInt) / mafInt
+                        val kml = mpg * 0.425
+                        // Tambahkan hasil kalkulasi ke dalam map
+//                        mergedData["Fuel"] = "%.2f".format(Locale.US, kml)
+                        mergedData["Fuel"] = kml.toInt().toString()
+//                        Log.d("Fuel", mergedData.getValue("Fuel"))
+                    } catch (e: Exception) {
+                        // Tangani jika ada error pembagian dengan nol atau lainnya
+                        Log.e("FuelCalc", "Error calculating fuel consumption: ${e.message}")
                     }
                 }
             }
+
+            // Update StateFlow utama dengan data yang sudah digabungkan dan dikalkulasi
             obdRepository.updateData(mergedData)
         }
     }
@@ -282,11 +345,12 @@ class OBDForegroundService : Service() {
             Pair(data, threshold)
         }.collect { (data, threshold) ->
 
-            val rpm = data["Rpm"]?.toIntOrNull()
+            val rpm = data["RPM"]?.toIntOrNull()
             val speed = data["Speed"]?.toIntOrNull()
             val throttle = data["Throttle"]?.toIntOrNull()
-            val temp = data["Temp"]?.toIntOrNull()
-            val maf = data["Maf"]?.toDoubleOrNull()
+            val temp = data["Temperature"]?.toIntOrNull()
+            val maf = data["MAF"]?.toDoubleOrNull()
+            val Fuel = data["Fuel"]?.toIntOrNull()
 
             val exceeded = listOfNotNull(
                 rpm?.takeIf { it > threshold.rpm },
@@ -302,14 +366,26 @@ class OBDForegroundService : Service() {
                 val streamId = mainRepository.soundPool.play(
                     mainRepository.beepSoundId, 1f, 1f, 0, -1, 1f
                 )
-                mainRepository.updateCurrentStreamId(streamId)
-                mainRepository.updateIsPlaying(true)
+                serviceScope.launch {
+                    launch {
+                        mainRepository.updateCurrentStreamId(streamId)
+                    }
+                    launch {
+                        mainRepository.updateIsPlaying(true)
+                    }
+                }
             } else if (!exceeded && isPlaying) {
                 mainRepository.currentStreamId.firstOrNull()?.let {
                     mainRepository.soundPool.stop(it)
                 }
-                mainRepository.updateCurrentStreamId(null)
-                mainRepository.updateIsPlaying(false)
+                serviceScope.launch {
+                    launch {
+                        mainRepository.updateCurrentStreamId(null)
+                    }
+                    launch {
+                        mainRepository.updateIsPlaying(false)
+                    }
+                }
             }
         }
     }
@@ -362,10 +438,21 @@ class OBDForegroundService : Service() {
 
         applicationScope.launch {
             Log.d("OBDService", "Running async cleanup tasks...")
-            obdRepository.updateDoingJob(false)
-            mainRepository.updateCurrentStreamId(null)
-            mainRepository.updateIsPlaying(false)
-            obdRepository.updateServiceState(ServiceState.STOPPED)
+//            obdRepository.updateDoingJob(false)
+            launch {
+                mainRepository.currentStreamId.firstOrNull()?.let {
+                    mainRepository.soundPool.stop(it)
+                }
+            }
+            launch {
+                mainRepository.updateCurrentStreamId(null)
+            }
+            launch {
+                mainRepository.updateIsPlaying(false)
+            }
+            launch {
+                obdRepository.updateServiceState(ServiceState.STOPPED)
+            }
             Log.d("OBDService", "Async cleanup tasks launched.")
         }
         Log.d("OBDService", "Cancelling service-specific scope...")
