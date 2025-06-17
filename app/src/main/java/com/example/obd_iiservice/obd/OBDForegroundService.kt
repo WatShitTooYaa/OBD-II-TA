@@ -392,7 +392,7 @@ class OBDForegroundService : Service() {
 
     private suspend fun sendToMQTT(){
         val mqttConfig = preferenceManager.getMQTTConfig()
-        mqttHelper = MqttHelper(mqttConfig)
+        mqttHelper = MqttHelper(mqttConfig, serviceScope)
         mqttHelper.connect(
             onSuccess = {
                 saveLogToFile(
@@ -403,9 +403,11 @@ class OBDForegroundService : Service() {
                 )
                 //                mqttHelper.publish("obd_fate", "{\"rpm\": 3000}")
                 mqttJob = serviceScope.launch {
+                    delay(500)
                     obdRepository.obdData.collect { data ->
 //                        val notification = buildNotification(data)
                         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+//                        Log.d("MQTT_PAYLOAD", "Data map yang akan dikirim: $data")
                         val jsonData = JSONObject(data).toString()
                         mqttHelper.publish(mqttConfig.topic!!, jsonData)
 

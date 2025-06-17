@@ -63,7 +63,7 @@ class OBDForegroundDump : Service() {
         serviceScope.launch {
             val mqttConfig = preferenceManager.getMQTTConfig()
             mqttHelper = MqttHelper(
-                mqttConfig
+                mqttConfig, serviceScope
             )
             mqttHelper.connect(
                 onSuccess = {

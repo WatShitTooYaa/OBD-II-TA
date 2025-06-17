@@ -1,7 +1,11 @@
 package com.example.obd_iiservice.helper
 
 import android.util.Log
+import com.example.obd_iiservice.app.ApplicationScope
 import com.example.obd_iiservice.setting.ui.mqtt.MQTTConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
@@ -17,6 +21,7 @@ import java.util.UUID
 
 class MqttHelper(
     private val config : MQTTConfig,
+    private val scope: CoroutineScope
 ) {
 
     private val clientId = "android-client-" + UUID.randomUUID().toString()
@@ -43,7 +48,7 @@ class MqttHelper(
             }
         }
 //        isAutomaticReconnect = true
-        Log.d("saat connect mqtt", "brokerUrl : $brokerUrl")
+//        Log.d("saat connect mqtt", "brokerUrl : $brokerUrl")
         // Gunakan TLS jika pakai ssl://
         if (mqttPortType == "ssl"){
             socketFactory = SSLSocketFactoryGenerator.createSocketFactory()
@@ -68,7 +73,9 @@ class MqttHelper(
         mqttClient.connect(connectOptions, null, object : IMqttActionListener {
             override fun onSuccess(asyncActionToken: IMqttToken?) {
                 Log.i("MQTT", "Connected to broker")
-                sendDiscoveryConfigs(mqttClient)
+                scope.launch {
+                    sendDiscoveryConfigs(mqttClient)
+                }
                 onSuccess()
             }
 
@@ -79,28 +86,27 @@ class MqttHelper(
         })
     }
 
-    fun sendDiscoveryConfigs(mqttClient: MqttAsyncClient) {
+    suspend fun sendDiscoveryConfigs(mqttClient: MqttAsyncClient) {
         val sensors = listOf(
-            Triple("rpm", "OBD RPM", "rpm"),
-            Triple("speed", "OBD Speed", "km/h"),
-            Triple("throttle", "OBD Throttle", "%"),
-            Triple("temp", "OBD Temperature", "°C"),
-            Triple("maf", "OBD MAF", "g/s"),
+            Triple("MAF", "OBD MAF", "g/s"),
+            Triple("Fuel", "OBD Fuel", "km/l"),
+            Triple("Throttle", "OBD Throttle", "%"),
+            Triple("Temperature", "OBD Temperature", "°C"),
+            Triple("RPM", "OBD RPM", "rpm"),
+            Triple("Speed", "OBD Speed", "km/h"),
         )
 
-        for ((id, name, unit) in sensors) {
+        Log.d("MQTT_CONFIG_SENDER", "Memulai pengiriman ${sensors.size} konfigurasi dengan delay...")
+
+        for ((index, sensor) in sensors.withIndex()) {
+            val (id, name, unit) = sensor
             val configTopic = "$mqttTopic/sensor/obd_$id/config"
 
             val configPayload = JSONObject().apply {
                 put("name", name)
-//                put("state_topic", "obd_fate")
                 put("state_topic", mqttTopic)
                 put("unit_of_measurement", unit)
-                put("value_template", "{{ value_json.${id.replaceFirstChar {
-                    if (it.isLowerCase()) it.titlecase(
-                        Locale.ROOT
-                    ) else it.toString()
-                }} }}")
+                put("value_template", "{{ value_json.$id }}")
                 put("unique_id", "obd_${id}_1")
                 put("device", JSONObject().apply {
                     put("identifiers", listOf("obd_device"))
@@ -109,14 +115,25 @@ class MqttHelper(
                 })
             }
 
-            mqttClient.publish(
-                configTopic,
-//                mqttTopic,
-                configPayload.toString().toByteArray(),
-                2,
-                true // retain true agar HA tetap bisa deteksi meskipun restart
-            )
+            val payloadString = configPayload.toString()
+            Log.d("MQTT_CONFIG_SENDER", "Payload String #${index + 1} untuk ID '$id': $payloadString")
+
+            try {
+                mqttClient.publish(
+                    configTopic,
+                    payloadString.toByteArray(Charsets.UTF_8),
+                    2,
+                    true
+                )
+                Log.d("MQTT_CONFIG_SENDER", "-> Berhasil memanggil publish untuk ID: '$id'")
+            } catch (e: Exception) {
+                Log.e("MQTT_CONFIG_SENDER", "-> GAGAL memanggil publish untuk ID: '$id'.", e)
+            }
+
+            // PERUBAHAN 4: Tambahkan delay 100 milidetik setelah setiap pengiriman
+            delay(100)
         }
+        Log.d("MQTT_CONFIG_SENDER", "Proses pengiriman konfigurasi selesai.")
     }
 
     fun publish(topic: String, payload: String) {

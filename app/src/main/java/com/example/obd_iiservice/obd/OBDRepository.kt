@@ -145,12 +145,12 @@ class OBDRepositoryImpl @Inject constructor(
     // Fungsi helper untuk membuat list default saat inisialisasi
     private fun createDefaultObdList(): List<OBDItem> {
         return listOf(
-            OBDItem("RPM", "0", "rpm", "0", "10000", threshold = "0"),
+            OBDItem("RPM", "0", "rpm", "0", "7000", threshold = "0"),
             OBDItem("Speed", "0", "km/h", "0", "250", threshold = "0"),
             OBDItem("Throttle", "0", "%", "0", "100", threshold = "0"),
             OBDItem("Temperature", "30", "°C", "30", "140", threshold = "0"),
             OBDItem("MAF", "0", "g/s", "0", "120", threshold = "0"),
-            OBDItem("Fuel", "0", "Km/L", "0", "30", threshold = "0"),
+            OBDItem("Fuel", "0", "Km/L", "0", "50", threshold = "0"),
         )
     }
 

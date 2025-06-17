@@ -3,6 +3,7 @@ package com.example.obd_iiservice.obd
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -39,14 +40,15 @@ class OBDAdapter(
                 startValue = item.startValue.toInt()
                 endValue = item.endValue.toInt()
                 value = item.value.toInt()
-                when(item.value > item.threshold){
+                when(item.value.toFloat() > item.threshold.toFloat()){
                     true -> {
-                        pointStartColor = R.color.gauge_point_end
-                        Log.d("Adapter", "true")
+                        pointStartColor = ContextCompat.getColor(context, R.color.gauge_point_end)
+                        Log.d("${item.label} true", "threshold : ${item.threshold}  val : ${item.value}")
                     }
                     false -> {
-                        pointStartColor = R.color.green_second
-                        Log.d("Adapter", "False")
+                        pointStartColor = ContextCompat.getColor(context, R.color.green_second)
+                        Log.d("${item.label} false", "threshold : ${item.threshold}  val : ${item.value}")
+//                        Log.d("Adapter", "False")
                     }
                 }
 //                if (item.label == "Temperature"){
@@ -54,7 +56,7 @@ class OBDAdapter(
 //                }
 //                pointSize = 100
             }
-            Log.d("Adapter item", "${item.label} : ${item.threshold}")
+//            Log.d("Adapter item", "${item.label} : ${item.threshold}")
         }
     }
 
