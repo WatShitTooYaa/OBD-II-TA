@@ -74,18 +74,6 @@ class BluetoothViewModel @Inject constructor(
     private var _previousIsAuto = MutableStateFlow<Boolean?>(false)
     val previousIsAuto : StateFlow<Boolean?> = _previousIsAuto
 
-//    var bluetoothSocket : BluetoothSocket? = null
-//        set(value) {
-//            field = value
-////            _isConnected.postValue(value != null)
-//            _isConnected.postValue(value?.isConnected == true)
-//        }
-
-//    fun connect(address : String) {
-//        viewModelScope.launch {
-//            bluetoothSocket = repository.connectToDevice(address)
-//        }
-//    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun connectToDeviceSuspend(address: String): Boolean = withContext(Dispatchers.IO) {

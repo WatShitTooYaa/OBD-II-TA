@@ -91,14 +91,6 @@ class MqttActivity : AppCompatActivity(), MqttAdapter.OnMqttItemClickListener {
 
 
         rvMqtt.addItemDecoration(
-//            DividerItemDecoration(
-//                activity,
-//                layoutManager.orientation
-////            )
-//            RecyclerViewItemDecoration(
-//                requireActivity(),
-//                R.drawable.rv_divider
-//            )
             RecyclerViewItemDecoration(
                 this,
                 R.drawable.rv_divider

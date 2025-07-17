@@ -43,20 +43,12 @@ class OBDAdapter(
                 when(item.value.toFloat() > item.threshold.toFloat()){
                     true -> {
                         pointStartColor = ContextCompat.getColor(context, R.color.gauge_point_end)
-                        Log.d("${item.label} true", "threshold : ${item.threshold}  val : ${item.value}")
                     }
                     false -> {
                         pointStartColor = ContextCompat.getColor(context, R.color.green_second)
-                        Log.d("${item.label} false", "threshold : ${item.threshold}  val : ${item.value}")
-//                        Log.d("Adapter", "False")
                     }
                 }
-//                if (item.label == "Temperature"){
-//                    pointSize = 30
-//                }
-//                pointSize = 100
             }
-//            Log.d("Adapter item", "${item.label} : ${item.threshold}")
         }
     }
 

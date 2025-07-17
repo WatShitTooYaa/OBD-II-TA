@@ -12,6 +12,7 @@ import org.eclipse.paho.client.mqttv3.IMqttToken
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient
 import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONObject
@@ -37,19 +38,12 @@ class MqttHelper(
         isCleanSession = true
         connectionTimeout = 10
         keepAliveInterval = 20
-//        if (config.username.isNullOrBlank() && config.password.isNullOrBlank()){
-//            userName = config.username
-//            password = config.password?.toCharArray()
-//        }
         config.username?.takeIf { it.isNotBlank() }?.let { username ->
             config.password?.takeIf { it.isNotBlank() }?.let { password ->
                 userName = username
                 this.password = password.toCharArray()
             }
         }
-//        isAutomaticReconnect = true
-//        Log.d("saat connect mqtt", "brokerUrl : $brokerUrl")
-        // Gunakan TLS jika pakai ssl://
         if (mqttPortType == "ssl"){
             socketFactory = SSLSocketFactoryGenerator.createSocketFactory()
         }
@@ -96,8 +90,6 @@ class MqttHelper(
             Triple("Speed", "OBD Speed", "km/h"),
         )
 
-        Log.d("MQTT_CONFIG_SENDER", "Memulai pengiriman ${sensors.size} konfigurasi dengan delay...")
-
         for ((index, sensor) in sensors.withIndex()) {
             val (id, name, unit) = sensor
             val configTopic = "$mqttTopic/sensor/obd_$id/config"
@@ -116,7 +108,6 @@ class MqttHelper(
             }
 
             val payloadString = configPayload.toString()
-            Log.d("MQTT_CONFIG_SENDER", "Payload String #${index + 1} untuk ID '$id': $payloadString")
 
             try {
                 mqttClient.publish(
@@ -125,25 +116,49 @@ class MqttHelper(
                     2,
                     true
                 )
-                Log.d("MQTT_CONFIG_SENDER", "-> Berhasil memanggil publish untuk ID: '$id'")
             } catch (e: Exception) {
                 Log.e("MQTT_CONFIG_SENDER", "-> GAGAL memanggil publish untuk ID: '$id'.", e)
             }
 
-            // PERUBAHAN 4: Tambahkan delay 100 milidetik setelah setiap pengiriman
             delay(100)
         }
         Log.d("MQTT_CONFIG_SENDER", "Proses pengiriman konfigurasi selesai.")
     }
 
     fun publish(topic: String, payload: String) {
-        if (mqttClient.isConnected) {
+        // 1. Pengecekan Proaktif: Cek kondisi umum terlebih dahulu.
+        // Jika tidak terhubung, langsung keluar agar tidak membuang sumber daya.
+        if (!mqttClient.isConnected) {
+            Log.w("MQTT_Publish", "Client not connected. Skipping publish to topic: $topic")
+            return
+        }
+
+        // Jika sampai di sini, berarti klien kemungkinan besar terhubung.
+        try {
+            // 2. Aksi Utama dengan Penanganan Error Reaktif
             val message = MqttMessage(payload.toByteArray(Charsets.UTF_8))
-            message.qos = 2
+            message.qos = 1 // QoS 1 atau 0 lebih disarankan untuk data telemetri yang sering untuk mengurangi overhead
             message.isRetained = false
-            mqttClient.publish(topic, message)
-        } else {
-            Log.e("MQTT", "Client not connected, can't publish")
+
+            // Menggunakan publish dengan listener untuk menangani hasil secara asinkron
+            mqttClient.publish(topic, message, null, object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    Log.d("MQTT_Publish", "Publish successful to topic: $topic")
+                }
+
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                    // Ini menangani kegagalan pada level jaringan atau broker
+                    Log.e("MQTT_Publish", "Publish failed to topic: $topic", exception)
+                }
+            })
+
+        } catch (e: MqttException) {
+            // Ini menangani error yang mungkin terjadi SAAT memanggil publish(),
+            // misalnya jika antrian internal penuh (Too many publishes in progress).
+            Log.e("MQTT_Publish", "MqttException on calling publish: ${e.message}")
+        } catch (e: Exception) {
+            // Jaring pengaman untuk error tak terduga lainnya.
+            Log.e("MQTT_Publish", "An unexpected error occurred during publish call: ${e.message}")
         }
     }
 

@@ -23,6 +23,7 @@ import com.example.obd_iiservice.setting.ui.threshold.ThresholdRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -31,6 +32,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -65,6 +67,9 @@ class OBDForegroundService : Service() {
         readJob?.cancel() // cancel sebelumnya kalau ada
         mqttJob?.cancel()
         serviceScope.launch {
+            launch {
+                obdRepository.resetOBDData()
+            }
             launch {
                 monitorThresholds()
                 Log.d("onstartcmnd", "monitor threshold")
@@ -116,47 +121,67 @@ class OBDForegroundService : Service() {
                         }
                         OBDJobState.FREE -> {
                             Log.d("triple", "obdjobstate:free beforesocket")
+                            if (readJob == null || !readJob!!.isActive) {
+                                if (socket != null) {
+                                    Log.d("triple", "obdjobstate:free")
 
-                            if (socket != null){
-                                Log.d("triple", "obdjobstate:free")
-
-                                //start reading
-                                readJob = startReading(applicationContext, socket.inputStream, socket.outputStream)
-                                launch {
-                                    obdRepository.updateServiceState(ServiceState.RUNNING)
-                                }
-                                //check internet
-                                when (networkStatus) {
-                                    NetworkStatus.Available -> {
-                                        serviceScope.launch {
-                                            if (obdRepository.checkDataForMQTTConnection()){
-                                                sendToMQTT()
-                                            } else {
-                                                withContext(Dispatchers.Main){
-                                                    makeToast(this@OBDForegroundService, "MQTT not started, data null")
+                                    //start reading
+                                    readJob = startReading(
+                                        applicationContext,
+                                        socket.inputStream,
+                                        socket.outputStream
+                                    )
+                                    launch {
+                                        obdRepository.updateServiceState(ServiceState.RUNNING)
+                                    }
+                                    //check internet
+                                    when (networkStatus) {
+                                        NetworkStatus.Available -> {
+                                            serviceScope.launch {
+                                                if (obdRepository.checkDataForMQTTConnection()) {
+                                                    sendToMQTT()
+                                                } else {
+                                                    withContext(Dispatchers.Main) {
+                                                        makeToast(
+                                                            this@OBDForegroundService,
+                                                            "MQTT not started, data null"
+                                                        )
+                                                    }
                                                 }
                                             }
+                                            withContext(Dispatchers.Main) {
+                                                makeToast(
+                                                    this@OBDForegroundService,
+                                                    "Internet tersedia"
+                                                )
+                                            }
                                         }
-                                        withContext(Dispatchers.Main) {
-                                            makeToast(this@OBDForegroundService, "Internet tersedia")
+
+                                        NetworkStatus.Lost -> {
+                                            withContext(Dispatchers.Main) {
+                                                //                                makeToast(this@OBDForegroundService, "Internet tersedia")
+                                                makeToast(
+                                                    this@OBDForegroundService,
+                                                    "Internet terputus"
+                                                )
+                                            }
                                         }
+
+                                        NetworkStatus.Unavailable -> {
+                                            withContext(Dispatchers.Main) {
+                                                //                                makeToast(this@OBDForegroundService, "Internet tersedia")
+                                                makeToast(
+                                                    this@OBDForegroundService,
+                                                    "Tidak ada jaringan"
+                                                )
+                                            }
+                                        }
+
+                                        else -> {}
                                     }
-                                    NetworkStatus.Lost -> {
-                                        withContext(Dispatchers.Main) {
-    //                                makeToast(this@OBDForegroundService, "Internet tersedia")
-                                            makeToast(this@OBDForegroundService, "Internet terputus")
-                                        }
-                                    }
-                                    NetworkStatus.Unavailable -> {
-                                        withContext(Dispatchers.Main) {
-    //                                makeToast(this@OBDForegroundService, "Internet tersedia")
-                                            makeToast(this@OBDForegroundService, "Tidak ada jaringan")
-                                        }
-                                    }
-                                    else -> {}
+                                } else {
+                                    Log.e("OBD", "input atau output null")
                                 }
-                            } else {
-                                Log.e("OBD", "input atau output null")
                             }
                         }
 
@@ -202,17 +227,15 @@ class OBDForegroundService : Service() {
         startForeground(1, notification)
     }
 
-    fun startReading(context: Context, input: InputStream, output: OutputStream): Job? {
+    private fun startReading(context: Context, input: InputStream, output: OutputStream): Job? {
         readJob?.cancel()
 
+        //PID untuk mengambil data seperti speed, rpm, dll
         val pidList = listOf("010C", "010D", "0111", "0105", "0110")
 
         readJob = serviceScope.launch {
-            // --- TAHAP PERSIAPAN SINKRONISASI ---
-            // 1. Buat Channel sebagai "kotak surat" antara listener dan pengirim.
             val responseChannel = Channel<String>(Channel.UNLIMITED)
 
-            // 2. Mulai listener SEMENTARA yang tugasnya hanya memasukkan semua respons ke dalam channel.
             val initListenerJob = launch {
                 obdRepository.listenForResponses(input)
                     .collect { response ->
@@ -220,44 +243,23 @@ class OBDForegroundService : Service() {
                     }
             }
 
-            // --- TAHAP INISIALISASI SEKUENSIAL ---
-            Log.d("OBD_INIT", "Memulai tahap inisialisasi...")
+            // inisiasi elm
             val initCmds = listOf("ATZ", "ATE0", "ATH1", "ATSP0", "0100")
             for (cmd in initCmds) {
-                // 3. Kirim perintah seperti biasa.
+
                 obdRepository.sendCommand(output, cmd)
+                val response = withTimeoutOrNull(2000) { responseChannel.receive() }
+                Log.d("INIT_RESPONSE", "Cmd: '$cmd' -> Resp: '$response'")
 
-                // 4. Tunggu respons dari channel.
-                //    receive() adalah suspend function, ia akan "berhenti" di sini sampai ada pesan masuk.
-                //    Kita beri timeout untuk mencegah aplikasi macet jika tidak ada respons.
-                val response = withTimeoutOrNull(2000) { // Timeout 2 detik
-                    responseChannel.receive()
-                }
-
-                // 5. Cetak (Log) perintah dan responsnya.
-                if (response != null) {
-                    Log.d("OBD_INIT", "Cmd: '$cmd' -> Resp: '$response'")
-                } else {
-                    Log.w("OBD_INIT", "Cmd: '$cmd' -> Tidak ada respons (timeout)")
-                }
-
-                // Delay singkat tetap berguna untuk beberapa perintah AT
                 delay(200)
             }
 
-            // 6. Hentikan listener sementara karena tahap inisialisasi selesai.
             initListenerJob.cancel()
-            Log.d("OBD_INIT", "Tahap inisialisasi selesai.")
 
-
-            // --- TAHAP MEMULAI LISTENER UTAMA (untuk PID) ---
-            // Kode Anda selanjutnya dimulai di sini.
             val listenerJob = launch {
                 obdRepository.listenForResponses(input)
                     .collect { response ->
-//                        Log.d("OBD_RESPONSE", "Raw: $response")
                         val parsedData = obdRepository.parseOBDResponse(response, context)
-
                         if (parsedData.isNotEmpty()) {
                             sendOBDData(parsedData)
                         }
@@ -268,23 +270,17 @@ class OBDForegroundService : Service() {
                 obdRepository.updateOBDJobState(OBDJobState.READING)
             }
 
-            // --- TAHAP LOOP PENGIRIM PERINTAH (PID) ---
             while (isActive) {
                 for (pid in pidList) {
                     if (!isActive) break
                     val commandSentSuccessfully = obdRepository.sendCommand(output, pid)
-
                     if (!commandSentSuccessfully) {
-                        Log.e("OBD_READING", "Gagal mengirim perintah, koneksi mungkin terputus.")
-                        // ... (logika error handling Anda) ...
                         this.cancel()
                         break
                     }
                     delay(100)
                 }
             }
-
-            // ... (kode cleanup Anda) ...
             launch {
                 obdRepository.updateOBDJobState(OBDJobState.FREE)
             }
@@ -293,6 +289,56 @@ class OBDForegroundService : Service() {
         return readJob
     }
 
+
+
+//    private suspend fun sendCommandAndAwaitResponse(
+//        output: OutputStream,
+//        input: InputStream,
+//        command: String,
+//        timeoutMs: Long = 2000
+//    ): String = withContext(Dispatchers.IO) {
+//        // 1. Bersihkan buffer input dari data sisa/lama sebelum mengirim perintah baru
+//        while (input.available() > 0) {
+//            input.read()
+//        }
+//
+//        // 2. Kirim perintah
+//        output.write((command + "\r").toByteArray())
+//        output.flush()
+//
+//        // 3. Baca respons sampai menemukan prompt '>' atau timeout
+//        val responseBuffer = StringBuilder()
+//        val startTime = System.currentTimeMillis()
+//        val temp = ByteArray(1024)
+//
+//        while (true) {
+//            // Cek timeout
+//            if (System.currentTimeMillis() - startTime > timeoutMs) {
+//                Log.w("OBD_SYNC_READ", "Timeout saat menunggu respons untuk perintah: $command")
+//                break
+//            }
+//
+//            if (input.available() > 0) {
+//                val len = input.read(temp)
+//                if (len > 0) {
+//                    responseBuffer.append(String(temp, 0, len, Charsets.UTF_8))
+//                    // Jika prompt ditemukan, kita anggap respons selesai
+//                    if (responseBuffer.contains('>')) {
+//                        break
+//                    }
+//                }
+//            }
+//            // Beri sedikit jeda agar tidak membebani CPU
+//            delay(50)
+//        }
+//
+//        // 4. Bersihkan dan kembalikan respons
+//        return@withContext responseBuffer.toString()
+//            .replace(">", "")
+//            .replace("\r", " ")
+//            .replace("\n", " ")
+//            .trim()
+//    }
 
     private fun sendOBDData(data : Map<String, String>) {
         serviceScope.launch {
@@ -350,14 +396,15 @@ class OBDForegroundService : Service() {
             val throttle = data["Throttle"]?.toIntOrNull()
             val temp = data["Temperature"]?.toIntOrNull()
             val maf = data["MAF"]?.toDoubleOrNull()
-            val Fuel = data["Fuel"]?.toIntOrNull()
+            val fuel = data["Fuel"]?.toIntOrNull()
 
             val exceeded = listOfNotNull(
                 rpm?.takeIf { it > threshold.rpm },
                 speed?.takeIf { it > threshold.speed },
                 throttle?.takeIf { it > threshold.throttle },
                 temp?.takeIf { it > threshold.temp },
-                maf?.takeIf { it > threshold.maf }
+                maf?.takeIf { it > threshold.maf },
+                fuel?.takeIf { it > threshold.temp }
             ).isNotEmpty()
 
             val isPlaying = mainRepository.isPlaying.first()
@@ -374,7 +421,7 @@ class OBDForegroundService : Service() {
                         mainRepository.updateIsPlaying(true)
                     }
                 }
-            } else if (!exceeded && isPlaying) {
+            } else if (!exceeded) {
                 mainRepository.currentStreamId.firstOrNull()?.let {
                     mainRepository.soundPool.stop(it)
                 }
@@ -390,6 +437,7 @@ class OBDForegroundService : Service() {
         }
     }
 
+    @OptIn(FlowPreview::class)
     private suspend fun sendToMQTT(){
         val mqttConfig = preferenceManager.getMQTTConfig()
         mqttHelper = MqttHelper(mqttConfig, serviceScope)
@@ -404,9 +452,11 @@ class OBDForegroundService : Service() {
                 //                mqttHelper.publish("obd_fate", "{\"rpm\": 3000}")
                 mqttJob = serviceScope.launch {
                     delay(500)
-                    obdRepository.obdData.collect { data ->
+                    obdRepository.obdData
+                        .sample(300)
+                        .collect { data ->
 //                        val notification = buildNotification(data)
-                        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+//                        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 //                        Log.d("MQTT_PAYLOAD", "Data map yang akan dikirim: $data")
                         val jsonData = JSONObject(data).toString()
                         mqttHelper.publish(mqttConfig.topic!!, jsonData)
@@ -436,7 +486,11 @@ class OBDForegroundService : Service() {
         Log.d("OBDService", "onDestroy() is being called!")
         readJob?.cancel()
         mqttJob?.cancel()
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            stopService(Intent(this, OBDForegroundService::class.java))
+        }
 
         applicationScope.launch {
             Log.d("OBDService", "Running async cleanup tasks...")

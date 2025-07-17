@@ -47,6 +47,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -184,13 +185,6 @@ class BluetoothActivity : AppCompatActivity() {
             when (currentState) {
                 BluetoothConnectionState.IDLE -> {
                     if (currentAddress == null) {
-                        // Aksi untuk "Scan Devices..."
-//                        if (!bluetoothAdapter.isEnabled) {
-//                            val enableBtnIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-//                            enableBluetoothLauncher.launch(enableBtnIntent)
-//                        } else {
-//                            checkAndRequestPermissions()
-//                        }
                         checkAndRequestPermissions()
                     } else {
                         // Aksi untuk "Connect"
@@ -333,40 +327,19 @@ class BluetoothActivity : AppCompatActivity() {
         rvBluetooth.adapter = bluetoothDeviceAdapter
     }
 
-//    private fun startScanProcess() {
-//        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-//        val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
-//
-//        if (!isGpsEnabled) {
-//            // Beri tahu pengguna untuk menyalakan GPS
-//            Toast.makeText(this, "Tolong nyalakan Layanan Lokasi (GPS) untuk menemukan perangkat.", Toast.LENGTH_LONG).show()
-//            // Anda juga bisa mengarahkan pengguna ke pengaturan lokasi
-//            // startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-//            return // Jangan lanjutkan scan jika GPS mati
-//        }
-//
-//        // Jika GPS sudah nyala, baru lanjutkan ke startDiscovery()
-//        startDiscovery()
-//    }
-
-
     private fun checkAndRequestPermissions() {
         //check gps hidup atau tidak
         val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
-
+        //jika gps mati maka tidak lanjut ke tahap berikutnya
         if (!isGpsEnabled) {
-            // Beri tahu pengguna untuk menyalakan GPS
-            Toast.makeText(this, "Tolong nyalakan Layanan Lokasi (GPS) untuk menemukan perangkat.", Toast.LENGTH_LONG).show()
-            // Anda juga bisa mengarahkan pengguna ke pengaturan lokasi
-            // startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-            return // Jangan lanjutkan scan jika GPS mati
+            return
         }
 
         val permissionsToRequest = mutableListOf<String>()
 
+        // perizinan untuk Android 12+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Untuk Android 12+
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                 permissionsToRequest.add(Manifest.permission.BLUETOOTH_SCAN)
             }
@@ -376,22 +349,18 @@ class BluetoothActivity : AppCompatActivity() {
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
             }
-            Log.d("Android Version", "12+")
-
-        } else {
-            // Untuk Android 11 dan di bawahnya, butuh izin lokasi
+        }
+        // perizinan Android 11 dan di bawahnya
+        else {
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
             }
-            Log.d("Android Version", "11-")
         }
-
 
         if (permissionsToRequest.isNotEmpty()) {
             requestPermissions(permissionsToRequest.toTypedArray(), PERMISSION_REQUEST_BLUETOOTH)
         } else {
-            // Jika semua izin sudah ada, panggil fungsi "gerbang utama" kita.
-            proceedWithBluetoothProcess() // <-- UBAH INI
+            proceedWithBluetoothProcess()
         }
     }
 
@@ -416,14 +385,10 @@ class BluetoothActivity : AppCompatActivity() {
     // Ganti nama dari 'enableBluetooth' menjadi lebih deskriptif
     @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT])
     private fun proceedWithBluetoothProcess() {
-        // 2. SETELAH izin dipastikan ada, BARULAH kita cek status adapter.
         if (!bluetoothAdapter.isEnabled) {
-            // Jika mati, minta pengguna untuk menyalakan.
-            // Aksi ini sekarang aman karena kita sudah punya izin BLUETOOTH_CONNECT.
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             enableBluetoothLauncher.launch(enableBtIntent)
         } else {
-            // Jika sudah hidup, langsung mulai discovery.
             startDiscovery()
         }
     }
@@ -447,61 +412,52 @@ class BluetoothActivity : AppCompatActivity() {
                     launch {
                         bluetoothViewModel.changeIsReceiverRegistered(true)
                     }
-                    Log.d("bluetooth", "isReceiverRegistered")
                 }
             }
-            Log.d("bluetooth", "Start discovery")
-    //        deviceList.clear()
             listBluetoothDevice.clear()
-    //        deviceListAdapter.notifyDataSetChanged()
             bluetoothDeviceAdapter.notifyDataSetChanged()
             bluetoothAdapter.startDiscovery()
-            Toast.makeText(this, "Scanning bluetooth devices....", Toast.LENGTH_LONG).show()
-
         }
 
     private fun connectToDevice(address: String) {
-        // UUID default untuk SPP (Serial Port Profile)
-        Log.d("bluetooth", "connecting")
+        val startTime = System.nanoTime()
+
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED){
             if (VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_CONNECT), REQUEST_PERMISSION)
             }
-//            return
         }
-        Log.d("bluetooth", "connecting")
-
         lifecycleScope.launch {
             bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTING)
         }
         bluetoothViewModel.connectToDevice(
             address = address,
             onSuccess = {
+                val duration = System.nanoTime() - startTime
+                val durationInMillis = TimeUnit.NANOSECONDS.toMillis(duration)
                 val device = bluetoothViewModel.bluetoothSocket.value?.remoteDevice
-//                binding.tvStatusBluetooth.text = device?.name ?: "Unknown"
                 lifecycleScope.launch {
                     bluetoothViewModel.saveBluetoothAddress(address)
-//                    obdViewModel.updateBluetoothConnection(true)
                     bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTED)
                 }
-                Toast.makeText(this, "Connected to ${device?.name}", Toast.LENGTH_SHORT).show()
-                saveLogToFile(this, "Connect Bluetooth", "OK", "Connected to ${device?.name}")
-//                testObdConnection()
+                Toast.makeText(this, "Connected to ${device?.name} in ${durationInMillis}ms", Toast.LENGTH_SHORT).show()
+                saveLogToFile(this, "Connect Bluetooth", "OK", "Connected to ${device?.name}. Duration: ${durationInMillis}ms")
                 startAndBindOBDService()
             },
             onError = { error ->
+                val duration = System.nanoTime() - startTime
+                val durationInMillis = TimeUnit.NANOSECONDS.toMillis(duration)
                 lifecycleScope.launch {
                     bluetoothViewModel.updateConnectionState(BluetoothConnectionState.IDLE)
                 }
-                Toast.makeText(this, "Connection failed: $error", Toast.LENGTH_LONG).show()
-                saveLogToFile(this, "Connect Bluetooth", "ERROR", "Connection failed: $error")
+                saveLogToFile(this, "Connect Bluetooth", "ERROR", "Connection failed: $error. Duration: ${durationInMillis}ms")
                 Log.e("Bluetooth", "Connection failed: $error")
             }
         )
     }
 
 
-    private fun reconnectUntilSuccess(address: String): Job? {
+    private fun reconnectUntilSuccess(address: String): Job {
         Log.d("Bluetooth", "reconnect")
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {

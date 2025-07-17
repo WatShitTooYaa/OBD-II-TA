@@ -55,6 +55,7 @@ class BluetoothRepositoryImpl @Inject constructor(
     @SuppressLint("MissingPermission")
     override suspend fun connectToDevice(address: String): BluetoothSocket? {
         val device = bluetoothAdapter.getRemoteDevice(address)
+        //uuid standart untuk spp elm327
         val uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
 
         return withContext(Dispatchers.IO) {

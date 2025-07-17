@@ -40,7 +40,7 @@ class ThresholdActivity : AppCompatActivity() {
     }
 
     private fun initUI(){
-        val listData = listOf<String>("RPM", "Speed", "Throttle", "Temp", "Maf")
+        val listData = listOf<String>("RPM", "Speed", "Throttle", "Temp", "Maf", "Fuel")
 
         lifecycleScope.launch {
             thresholdViewModel.thresholdData.collect { data ->
@@ -49,7 +49,8 @@ class ThresholdActivity : AppCompatActivity() {
                     "Speed" to data.speed,
                     "Throttle" to data.throttle,
                     "Temp" to data.temp,
-                    "Maf" to data.maf.toInt()
+                    "Maf" to data.maf.toInt(),
+                    "Fuel" to data.fuel,
                 )
 
                 thresholdViewModel.thresholdKey.putAll(keyMap)
@@ -60,48 +61,26 @@ class ThresholdActivity : AppCompatActivity() {
                     setupSeekBar(seekBarThrottle, textThrottle, "Throttle", keyMap["Throttle"] ?: 0)
                     setupSeekBar(seekBarTemp, textTemp, "Temp", keyMap["Temp"] ?: 0)
                     setupSeekBar(seekBarMaf, textMaf, "Maf", keyMap["Maf"] ?: 0)
+                    setupSeekBar(seekBarFuel, textFuel, "Fuel", keyMap["Fuel"] ?: 0)
                 }
             }
-//            thresholdViewModel.apply {
-//                this.thresholdData.collect { data ->
-//                    for (list in listData){
-//                        if (list == "RPM"){
-//                            this.thresholdKey[list] = data.rpm
-//                        } else if (list == "Speed") {
-//                            this.thresholdKey[list] = data.speed
-//                        } else if (list == "Throttle") {
-//                            this.thresholdKey[list] = data.throttle
-//                        } else if (list == "Temp"){
-//                            this.thresholdKey[list] = data.temp
-//                        } else if (list == "Maf"){
-//                            this.thresholdKey[list] = data.maf.toInt()
-//                        }
-//                    }
-//                }
-//            }
         }
 
         binding.apply {
             this.btnSaveThresholds.setOnClickListener {
-                // Lakukan sesuatu dengan threshold
                 Log.d("Thresholds", thresholdViewModel.thresholdKey.toString())
                 makeToast(this@ThresholdActivity, "Threshold saved")
-//                val listData = listOf<String>("RPM", "Speed", "Throttle", "Temp", "Maf")
                 lifecycleScope.launch {
                     thresholdViewModel.apply {
-//                        this.thresholdData.collect { data ->
                         for (list in listData){
                             this.thresholdKey[list]?.let { data ->
-                                if (list == "RPM"){
-                                    saveRpmThreshold(data)
-                                } else if (list == "Speed") {
-                                    saveSpeedThreshold(data)
-                                } else if (list == "Throttle") {
-                                    saveThrottleThreshold(data)
-                                } else if (list == "Temp"){
-                                    saveTempThreshold(data)
-                                } else if (list == "Maf"){
-                                    saveMafThreshold(data.toDouble())
+                                when(list){
+                                    "RPM" -> saveRpmThreshold(data)
+                                    "Speed" -> saveSpeedThreshold(data)
+                                    "Throttle" -> saveThrottleThreshold(data)
+                                    "Temp" -> saveTempThreshold(data)
+                                    "Maf" -> saveMafThreshold(data.toDouble())
+                                    "Fuel" -> saveFuelThreshold(data)
                                 }
                             }
                         }

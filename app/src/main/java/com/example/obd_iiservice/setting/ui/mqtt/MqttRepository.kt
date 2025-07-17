@@ -34,10 +34,6 @@ class MqttRepositoryImpl @Inject constructor(
     private val preferenceManager: PreferenceManager,
     @ApplicationScope private val applicationScope: CoroutineScope,
 ) : MqttRepository {
-    // Helper function untuk mengurangi boilerplate
-//    private fun <T> Flow<T?>.toState(initialValue: T?): StateFlow<T?> =
-//        stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), initialValue)
-
 
     private fun <T> Flow<T>.toState(initialValue: T): StateFlow<T> =
         stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), initialValue)
@@ -50,34 +46,12 @@ class MqttRepositoryImpl @Inject constructor(
     private val mqttPassword: StateFlow<String?> = preferenceManager.mqttPassword.toState(null)
     private val mqttPortType: StateFlow<String> = preferenceManager.mqttPortType.toState("tcp")
     override val mqttAutoReconnect: StateFlow<Boolean> = preferenceManager.mqttAutoRecon.toState(false)
-//
-//    val mqttTopic: StateFlow<String?> = preferenceManager.mqttTopic
-//        .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), null)
-//
-//    val mqttHost: StateFlow<String?> = preferenceManager.mqttHost
-//        .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), null)
-//
-//    val mqttPort: StateFlow<Int?> = preferenceManager.mqttPort
-//        .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), null)
-//
-//    val mqttUsername: Flow<String?> = preferenceManager.mqttUsername
-//        .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), null)
-//
-//    val mqttPassword: StateFlow<String?> = preferenceManager.mqttPassword
-//        .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), null)
-//
-//    val mqttAutoRecon: StateFlow<Boolean> = preferenceManager.mqttAutoRecon
-//        .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), false)
-//
-//    val mqttPortType: StateFlow<String> = preferenceManager.mqttPortType
-//        .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), "tcp")
 
     val delayResponse: StateFlow<Long> = preferenceManager.delayResponse
         .stateIn(applicationScope, SharingStarted.WhileSubscribed(5000), 0)
-//    val mqttConfig: Flow<MQTTConfig> = combine(
 
 
-    val partialMQTTConfig = combine(
+    private val partialMQTTConfig = combine(
         mqttTopic, mqttHost, mqttPort, mqttUsername, mqttPassword
     ) { topic, host, port, username, password ->
         PartialMQTTConfig(topic, host, port, username, password)

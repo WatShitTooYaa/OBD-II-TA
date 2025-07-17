@@ -19,6 +19,7 @@ interface ThresholdRepository {
     fun saveThrottleThreshold(throttle : Int)
     fun saveTempThreshold(temp : Int)
     fun saveMafThreshold(maf : Double)
+    fun saveFuelThreshold(fuel : Int)
 }
 
 class ThresholdRepositoryImpl @Inject constructor(
@@ -43,15 +44,29 @@ class ThresholdRepositoryImpl @Inject constructor(
     val mafThreshold : StateFlow<Double> = preferenceManager.mafThreshold
         .stateIn(scope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-    override val thresholdData = combine(
+    val fuelThreshold: StateFlow<Int> = preferenceManager.fuelThreshold
+        .stateIn(scope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val thresholdDataInit = combine(
         rpmThreshold, speedThreshold, throttleThreshold, tempThreshold, mafThreshold
     ) {rpm, speed, throttle, temp, maf ->
-        ThresholdConfig(
+        ThresholdConfigInit(
             rpm,
             speed,
             throttle,
             temp,
             maf
+        )
+    }
+
+    override val thresholdData = thresholdDataInit.combine(fuelThreshold){ init, fuel ->
+        ThresholdConfig(
+            init.rpm,
+            init.speed,
+            init.throttle,
+            init.temp,
+            init.maf,
+            fuel
         )
     }
 
@@ -73,5 +88,9 @@ class ThresholdRepositoryImpl @Inject constructor(
 
     override fun saveMafThreshold(maf : Double) {
         scope.launch { preferenceManager.saveMafThreshold(maf) }
+    }
+
+    override fun saveFuelThreshold(fuel: Int) {
+        scope.launch { preferenceManager.saveFuelThreshold(fuel)}
     }
 }

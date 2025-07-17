@@ -102,50 +102,32 @@ class HomeFragment : Fragment() {
         })
     }
 
-
+    //inisiasi recycler view
     private fun setupRecyclerView(itemHeight: Int) {
         val spanCount = 2 // Jumlah kolom grid Anda
         val spacingInDp = 2 // Jarak yang Anda inginkan dalam dp
 
-        // Konversi dp ke piksel menggunakan fungsi bantuan
         val spacingInPixels = spacingInDp.dpToPx(requireContext())
 
         rvOBD = binding.rvObd
         rvOBD.setHasFixedSize(true)
-        // Inisialisasi adapter dengan tinggi yang sudah dihitung
-//        homeAdapter = HomeAdapter(itemHeight)
         rvOBD.layoutManager = GridLayoutManager(activity, 2)
         obdAdapter = OBDAdapter(
-//            listOBD,
             itemHeight
         )
-
-//        val layoutManager = GridLayoutManager(requireContext(), 2)
-        // ... Logika SpanSizeLookup jika ada ...
-
-//        binding.rvObd.layoutManager = layoutManager
         rvOBD.adapter = obdAdapter
-//        binding.rvObd.adapter = homeAdapter
-        // Hapus dekorasi lama jika ada untuk menghindari duplikasi
         if (binding.rvObd.itemDecorationCount > 0) {
             binding.rvObd.removeItemDecorationAt(0)
         }
 
-        // --- INI BAGIAN PENTINGNYA ---
-        // Tambahkan ItemDecoration yang baru kita buat
         binding.rvObd.addItemDecoration(GridSpacingItemDecoration(spanCount, spacingInPixels, false))
-        // `includeEdge: false` berarti tidak ada margin di tepi luar grid.
-        // Ganti ke `true` jika Anda menginginkan margin di tepi luar juga.
     }
 
-
+    //mengamati perubahan data lalu memasukkannya kedalam adapter recycle view
     private fun observeDataOBD(){
-        // Gunakan lifecycleScope untuk mengumpulkan flow dengan aman
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // Collect StateFlow dari ViewModel
                 homeViewModel.obdItemsState.collect { updatedList ->
-                    // Kirim list baru ke adapter. DiffUtil akan melakukan sisanya.
                     obdAdapter.submitList(updatedList)
                 }
             }

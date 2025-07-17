@@ -24,7 +24,7 @@
             android:layout_height="wrap_content"
             android:progressDrawable="@drawable/scrubber_progress"
             android:thumb="@drawable/scrubber_control"
-            android:max="8000" />
+            android:max="4000" />
         <TextView
             android:textColor="@color/black"
 
@@ -113,6 +113,27 @@
             android:textColor="@color/black"
 
             android:id="@+id/text_maf"
+            android:text="25"
+            android:layout_marginBottom="16dp"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"/>
+
+        <!-- Fuel -->
+        <TextView
+            android:textColor="@color/black"
+
+            android:text="Fuel Threshold (km/L):"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"/>
+        <SeekBar
+            android:id="@+id/seekBar_fuel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100" />
+        <TextView
+            android:textColor="@color/black"
+
+            android:id="@+id/text_fuel"
             android:text="25"
             android:layout_marginBottom="16dp"
             android:layout_height="wrap_content"

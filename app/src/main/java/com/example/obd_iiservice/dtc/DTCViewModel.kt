@@ -23,6 +23,10 @@ class DTCViewModel @Inject constructor(
         obdRepository.updateOBDJobState(obdJobState)
     }
 
+    fun setDTC(listDTC : List<DTCItem>){
+        _listDTC.value = listDTC
+    }
+
     fun parseAndSetDTC(rawResponse: String) {
         val dtcCodes = parseDTCResponse(rawResponse)
         _listDTC.value = dtcCodes

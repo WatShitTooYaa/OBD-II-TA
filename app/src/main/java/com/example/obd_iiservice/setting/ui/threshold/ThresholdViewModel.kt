@@ -30,28 +30,26 @@ class ThresholdViewModel @Inject constructor(
     val thresholdData = thresholdRepository.thresholdData
 
     fun saveRpmThreshold(rpm: Int) {
-//        viewModelScope.launch { preferenceManager.saveRpmThreshold(rpm) }
         thresholdRepository.saveRpmThreshold(rpm)
     }
 
     fun saveSpeedThreshold(speed: Int) {
-//        viewModelScope.launch { preferenceManager.saveSpeedThreshold(speed) }
         thresholdRepository.saveSpeedThreshold(speed)
     }
 
     fun saveThrottleThreshold(throttle: Int) {
-//        viewModelScope.launch { preferenceManager.saveThrottleThreshold(throttle) }
         thresholdRepository.saveThrottleThreshold(throttle)
     }
 
     fun saveTempThreshold(temp: Int) {
-//        viewModelScope.launch { preferenceManager.saveTempThreshold(temp)}
         thresholdRepository.saveTempThreshold(temp)
     }
 
     fun saveMafThreshold(maf : Double) {
-//        viewModelScope.launch { preferenceManager.saveMafThreshold(maf) }
         thresholdRepository.saveMafThreshold(maf)
+    }
 
+    fun saveFuelThreshold(fuel : Int) {
+        thresholdRepository.saveFuelThreshold(fuel)
     }
 }

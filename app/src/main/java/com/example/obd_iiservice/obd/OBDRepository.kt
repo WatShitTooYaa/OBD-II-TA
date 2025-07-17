@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.obd_iiservice.app.ApplicationScope
+import com.example.obd_iiservice.dtc.DTCItem
 import com.example.obd_iiservice.helper.PreferenceManager
 import com.example.obd_iiservice.helper.saveLogToFile
 import com.example.obd_iiservice.internet.NetworkConnectivityObserver
@@ -67,6 +68,7 @@ interface OBDRepository {
     fun listenForResponses(input: InputStream): Flow<String>
     // Fungsi parsing bisa kita buat public agar bisa diakses dari luar
     fun parseOBDResponse(response: String, context: Context): Map<String, String>
+    fun parseOBDDTCResponse(response: String, context: Context): List<DTCItem>
     suspend fun sendCommand(output: OutputStream, command: String) : Boolean
     // Fungsi untuk service agar bisa mengupdate statusnya
     suspend fun updateServiceState(newState: ServiceState)
@@ -76,6 +78,8 @@ interface OBDRepository {
     suspend fun updateMQTTJobState(mqttJobState: MQTTJobState)
 
     suspend fun checkDataForMQTTConnection() : Boolean
+
+    suspend fun resetOBDData()
 
     // StateFlow yang bisa diamati oleh UI
     val serviceState: StateFlow<ServiceState>
@@ -152,6 +156,20 @@ class OBDRepositoryImpl @Inject constructor(
             OBDItem("MAF", "0", "g/s", "0", "120", threshold = "0"),
             OBDItem("Fuel", "0", "Km/L", "0", "50", threshold = "0"),
         )
+    }
+
+    // Tambahkan fungsi baru ini
+    override suspend fun resetOBDData() {
+        // Ganti dengan nilai default awal Anda
+        val defaultData = mapOf(
+            "RPM" to "0",
+            "Speed" to "0",
+            "Throttle" to "0",
+            "Temperature" to "0",
+            "MAF" to "0",
+            "Fuel" to "0"
+        )
+        _obdData.value = defaultData // Asumsi Anda menggunakan MutableStateFlow bernama _obdData
     }
 
     val obdList = listOf(
@@ -411,6 +429,7 @@ class OBDRepositoryImpl @Inject constructor(
         awaitClose { readerJob.cancel() }
     }
 
+    //data parsing
     override fun parseOBDResponse(response: String, context: Context): Map<String, String> {
         val data = mutableMapOf<String, String>()
 
@@ -467,10 +486,13 @@ class OBDRepositoryImpl @Inject constructor(
                     data["MAF"] = maf.toInt().toString()
                 }
             }
+//            cleanResponse.startsWith("43") -> {
+//                data["DTC"] = parseDTCResponse(cleanResponse).toString()
+//            }
             else -> {
                 if (cleanResponse.isNotBlank() && !cleanResponse.contains("NODATA", true)) {
                     Log.w("OBD", "No parser for PID: $cleanResponse")
-                    // saveLogToFile(...)
+                    saveLogToFile(context, "parsing OBD", "Warning", "No parser for PID: $cleanResponse")
                 }
             }
         }
@@ -479,6 +501,78 @@ class OBDRepositoryImpl @Inject constructor(
 
         onNewObdDataReceived(data)
         return data
+    }
+
+    //data dtc
+    override fun parseOBDDTCResponse(response: String, context: Context): List<DTCItem> {
+        val data = mutableMapOf<String, String>()
+        var listData = mutableListOf<DTCItem>()
+        // Membersihkan karakter umum dan "SEARCHING..."
+        var cleanResponse = response
+            .replace("SEARCHING...", "", ignoreCase = true)
+            .replace(" ", "") // Hapus semua spasi agar lebih mudah di-parse
+            .trim()
+
+        // Cari kemunculan terakhir dari "41" (ID respons untuk mode 01)
+        // Ini membantu mengabaikan echo dan data sampah di awal string.
+        val responseIndex = cleanResponse.lastIndexOf("43")
+        if (responseIndex != -1) {
+            cleanResponse = cleanResponse.substring(responseIndex)
+        }
+
+        // Gunakan 'when' untuk logika yang lebih bersih
+        when {
+            cleanResponse.startsWith("43") -> {
+//                var dtcResponse = parseDTCResponse(cleanResponse)
+                listData.addAll(parseDTCResponse(cleanResponse))
+                data["DTC"] = parseDTCResponse(cleanResponse).toString()
+//                return Pair(data, true)
+            }
+            else -> {
+                if (cleanResponse.isNotBlank() && !cleanResponse.contains("NODATA", true)) {
+                    Log.w("OBD", "No parser for PID: $cleanResponse")
+                    saveLogToFile(context, "parsing OBD", "Warning", "No parser for PID: $cleanResponse")
+                }
+                return emptyList()
+            }
+        }
+
+//        data["Fuel"] = (data.getValue("Speed").toInt() / (data.getValue("MAF").toInt() / 14.7 / 737 * 3600)).toString()
+
+        onNewObdDataReceived(data)
+        return listData.toList()
+    }
+
+    private fun parseDTCResponse(response: String): List<DTCItem> {
+        val clean = response.replace("\\s".toRegex(), "")
+        Log.d("OBD", "Raw DTC response: $response")
+
+        if (!clean.startsWith("43")) return emptyList()
+
+        val hexData = clean.removePrefix("43")
+        val dtcList = mutableListOf<DTCItem>()
+
+        for (i in hexData.indices step 4) {
+            if (i + 4 > hexData.length) break
+            val code = hexData.substring(i, i + 4)
+            if (code == "0000") continue
+            val parsedCode = convertHexToDTC(code)
+            dtcList.add(DTCItem(parsedCode, "Deskripsi tidak tersedia"))
+        }
+
+        return dtcList
+    }
+
+    private fun convertHexToDTC(hex: String): String {
+        val firstChar = hex[0]
+        val dtcType = when (firstChar) {
+            '0', '1', '2', '3' -> "P0"
+            '4', '5', '6', '7' -> "C0"
+            '8', '9', 'A', 'B' -> "B0"
+            'C', 'D', 'E', 'F' -> "U0"
+            else -> "P0"
+        }
+        return dtcType + hex.substring(1)
     }
 
     override suspend fun updateData(data: Map<String, String>) {

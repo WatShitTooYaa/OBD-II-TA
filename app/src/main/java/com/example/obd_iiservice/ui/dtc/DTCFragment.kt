@@ -3,6 +3,7 @@ package com.example.obd_iiservice.ui.dtc
 import android.annotation.SuppressLint
 import androidx.fragment.app.viewModels
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -20,6 +21,7 @@ import com.example.obd_iiservice.helper.makeToast
 import com.example.obd_iiservice.helper.saveLogToFile
 import com.example.obd_iiservice.obd.OBDJobState
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -104,24 +106,25 @@ class DTCFragment : Fragment() {
 //        val socket = bluetoothRepository.bluetoothSocket.value
         lifecycleScope.launch {
             try {
-                launch {
-                    dtcViewModel.updateOBDJobState(OBDJobState.CHECK_ENGINE)
-                }
+                // LANGKAH A: Beri tahu service untuk berhenti polling
+                Log.d("DTC_CHECK", "Mengatur state ke CHECK_ENGINE untuk menghentikan polling service.")
+                dtcViewModel.updateOBDJobState(OBDJobState.CHECK_ENGINE)
+                delay(2000) // Beri sedikit waktu agar service sempat membatalkan job-nya
+
+                // Sekarang aman untuk memulai komunikasi eksklusif
                 val obdManager = OBDManager(socket)
-//                val response = obdManager.sendCommand()
                 val response = obdManager.getDTCs()
+
                 saveLogToFile(requireContext(), "DTC response", "res", response)
                 dtcViewModel.parseAndSetDTC(response)
 
-//                obdRepository.updateDoingJob(false)
             } catch (e: Exception) {
                 e.printStackTrace()
-                makeToast(requireContext(), "Gagal koneksi OBD")
-//                Toast.makeText(this@DTCActivity, "Gagal koneksi OBD", Toast.LENGTH_SHORT).show()
+                makeToast(requireContext(), "Gagal mengambil data DTC: ${e.message}")
             } finally {
-                launch {
-                    dtcViewModel.updateOBDJobState(OBDJobState.FREE)
-                }
+                // LANGKAH C: Beri tahu service untuk melanjutkan polling
+                Log.d("DTC_CHECK", "Pengecekan DTC selesai. Mengembalikan state ke FREE.")
+                dtcViewModel.updateOBDJobState(OBDJobState.FREE)
             }
         }
     }

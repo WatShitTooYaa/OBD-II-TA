@@ -1,6 +1,7 @@
 package com.example.obd_iiservice.helper
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -60,108 +61,143 @@ class PreferenceManager @Inject constructor(
     val delayResponse: Flow<Long> = context.dataStore.data.map { it[DELAY_RESPONSE] ?: 100 }
 
     //threshold
-    val rpmThreshold : Flow<Int> = context.dataStore.data.map { it[RPM_THRESHOLD] ?: 0 }
-    val speedThreshold : Flow<Int> = context.dataStore.data.map { it[SPEED_THRESHOLD] ?: 0 }
-    val throttleThreshold : Flow<Int> = context.dataStore.data.map { it[THROTTLE_THRESHOLD] ?: 0 }
-    val tempThreshold : Flow<Int> = context.dataStore.data.map { it[TEMP_THRESHOLD] ?: 0 }
-    val mafThreshold : Flow<Double> = context.dataStore.data.map { it[MAF_THRESHOLD] ?: 0.0}
+    val rpmThreshold : Flow<Int> = context.dataStore.data.map { it[RPM_THRESHOLD] ?: 2500 }
+    val speedThreshold : Flow<Int> = context.dataStore.data.map { it[SPEED_THRESHOLD] ?: 100 }
+    val throttleThreshold : Flow<Int> = context.dataStore.data.map { it[THROTTLE_THRESHOLD] ?: 70 }
+    val tempThreshold : Flow<Int> = context.dataStore.data.map { it[TEMP_THRESHOLD] ?: 110 }
+    val mafThreshold : Flow<Double> = context.dataStore.data.map { it[MAF_THRESHOLD] ?: 20.0}
     val fuelThreshold : Flow<Int> = context.dataStore.data.map { it[FUEL_THRESHOLD] ?: 20 }
 
 
+    private suspend fun <T> saveOrRemove(key: Preferences.Key<T>, value: T?) {
+        context.dataStore.edit { preferences ->
+            if (value == null) {
+                preferences.remove(key)
+            } else {
+                preferences[key] = value
+            }
+        }
+    }
+
+    // 2. FUNGSI PUBLIK YANG JAUH LEBIH RINGKAS
+
+    // --- FUNGSI DATA BLUETOOTH DAN MQTT ---
+    suspend fun saveBluetoothAddress(address: String?) = saveOrRemove(BLUETOOTH_ADDRESS, address)
+    suspend fun saveMqttHost(host: String?) = saveOrRemove(MQTT_HOST, host)
+    suspend fun saveMqttUsername(username: String?) = saveOrRemove(MQTT_USERNAME, username)
+    suspend fun saveMqttPassword(password: String?) = saveOrRemove(MQTT_PASSWORD, password)
+    suspend fun saveMqttTopic(topic: String?) = saveOrRemove(MQTT_TOPIC, topic)
+
+    // Untuk tipe data yang tidak nullable, gunakan fungsi ekspresi tunggal
+    suspend fun saveMqttPort(port: Int) = context.dataStore.edit { it[MQTT_PORT] = port }
+    suspend fun saveMqttAuto(isAuto: Boolean) = context.dataStore.edit { it[MQTT_AUTO_RECONNECT] = isAuto }
+    suspend fun saveMqttPortType(type: String) = context.dataStore.edit { it[MQTT_PORT_TYPE] = type }
+
+    // --- FUNGSI DATA DELAY ---
+    suspend fun saveDelayResponse(delay: Long) = context.dataStore.edit { it[DELAY_RESPONSE] = delay }
+
+    // --- FUNGSI DATA THRESHOLD ---
+    suspend fun saveRpmThreshold(rpm: Int) = context.dataStore.edit { it[RPM_THRESHOLD] = rpm }
+    suspend fun saveSpeedThreshold(speed: Int) = context.dataStore.edit { it[SPEED_THRESHOLD] = speed }
+    suspend fun saveThrottleThreshold(throttle: Int) = context.dataStore.edit { it[THROTTLE_THRESHOLD] = throttle }
+    suspend fun saveTempThreshold(temp: Int) = context.dataStore.edit { it[TEMP_THRESHOLD] = temp }
+    suspend fun saveMafThreshold(maf: Double) = context.dataStore.edit { it[MAF_THRESHOLD] = maf }
+    suspend fun saveFuelThreshold(fuel: Int) = context.dataStore.edit { it[FUEL_THRESHOLD] = fuel }
+
     //fungsi menyimpan data bluetooth dan mqtt
-    suspend fun saveBluetoothAddress (address: String?) {
-        context.dataStore.edit { preferences ->
-            if (address == null) {
-                preferences.remove(BLUETOOTH_ADDRESS)
-            } else {
-                preferences[BLUETOOTH_ADDRESS] = address
-            }
-        }
-    }
-
-    suspend fun saveMqttHost(host: String?) {
-        context.dataStore.edit { preferences ->
-            if (host == null) {
-                preferences.remove(MQTT_HOST)
-            } else {
-                preferences[MQTT_HOST] = host
-            }
-        }
-//        context.dataStore.edit { it[MQTT_HOST] = host }
-    }
-
-    suspend fun saveMqttPort(port: Int) {
-        context.dataStore.edit { it[MQTT_PORT] = port }
-    }
-
-    suspend fun saveMqttUsername(username: String?) {
-        context.dataStore.edit { preferences ->
-            if (username == null) {
-                preferences.remove(MQTT_USERNAME)
-            } else {
-                preferences[MQTT_USERNAME] = username
-            }
-        }
-    }
-
-    suspend fun saveMqttPassword(password: String?) {
-        context.dataStore.edit { preferences ->
-            if (password == null) {
-                preferences.remove(MQTT_PASSWORD)
-            } else {
-                preferences[MQTT_PASSWORD] = password
-            }
-        }
-    }
-
-    suspend fun saveMqttTopic(topic: String?) {
-        context.dataStore.edit { preferences ->
-            if (topic == null) {
-                preferences.remove(MQTT_TOPIC)
-            } else {
-                preferences[MQTT_TOPIC] = topic
-            }
-        }
-//        context.dataStore.edit { it[MQTT_TOPIC] = topic }
-    }
-
-    suspend fun saveMqttAuto(isAuto: Boolean) {
-        context.dataStore.edit { it[MQTT_AUTO_RECONNECT] = isAuto }
-    }
-
-    suspend fun saveMqttPortType(type: String) {
-        context.dataStore.edit { it[MQTT_PORT_TYPE] = type }
-    }
-
-    //fungsi menyimpan data delay
-    suspend fun saveDelayResponse(delay : Long) {
-        context.dataStore.edit { it[DELAY_RESPONSE] = delay }
-    }
-
-    //fungsi menyimpan data threshold
-    suspend fun saveRpmThreshold(rpm : Int) {
-        context.dataStore.edit { it[RPM_THRESHOLD] = rpm }
-    }
-
-    suspend fun saveSpeedThreshold(speed : Int) {
-        context.dataStore.edit { it[SPEED_THRESHOLD] = speed }
-    }
-
-    suspend fun saveThrottleThreshold(throttle : Int) {
-        context.dataStore.edit { it[THROTTLE_THRESHOLD] = throttle }
-    }
-
-    suspend fun saveTempThreshold(temp : Int) {
-        context.dataStore.edit { it[TEMP_THRESHOLD] = temp }
-    }
-
-    suspend fun saveMafThreshold(maf : Double) {
-        context.dataStore.edit { it[MAF_THRESHOLD] = maf }
-    }
-
-    suspend fun saveFuelThreshold(fuel : Int) {
-        context.dataStore.edit { it[FUEL_THRESHOLD] = fuel }
-    }
+//    suspend fun saveBluetoothAddress (address: String?) {
+//        context.dataStore.edit { preferences ->
+//            if (address == null) {
+//                preferences.remove(BLUETOOTH_ADDRESS)
+//            } else {
+//                preferences[BLUETOOTH_ADDRESS] = address
+//            }
+//        }
+//    }
+//
+//    suspend fun saveMqttHost(host: String?) {
+//        context.dataStore.edit { preferences ->
+//            if (host == null) {
+//                preferences.remove(MQTT_HOST)
+//            } else {
+//                preferences[MQTT_HOST] = host
+//            }
+//        }
+////        context.dataStore.edit { it[MQTT_HOST] = host }
+//    }
+//
+//    suspend fun saveMqttPort(port: Int) {
+//        context.dataStore.edit { it[MQTT_PORT] = port }
+//    }
+//
+//    suspend fun saveMqttUsername(username: String?) {
+//        context.dataStore.edit { preferences ->
+//            if (username == null) {
+//                preferences.remove(MQTT_USERNAME)
+//            } else {
+//                preferences[MQTT_USERNAME] = username
+//            }
+//        }
+//    }
+//
+//    suspend fun saveMqttPassword(password: String?) {
+//        context.dataStore.edit { preferences ->
+//            if (password == null) {
+//                preferences.remove(MQTT_PASSWORD)
+//            } else {
+//                preferences[MQTT_PASSWORD] = password
+//            }
+//        }
+//    }
+//
+//    suspend fun saveMqttTopic(topic: String?) {
+//        context.dataStore.edit { preferences ->
+//            if (topic == null) {
+//                preferences.remove(MQTT_TOPIC)
+//            } else {
+//                preferences[MQTT_TOPIC] = topic
+//            }
+//        }
+////        context.dataStore.edit { it[MQTT_TOPIC] = topic }
+//    }
+//
+//    suspend fun saveMqttAuto(isAuto: Boolean) {
+//        context.dataStore.edit { it[MQTT_AUTO_RECONNECT] = isAuto }
+//    }
+//
+//    suspend fun saveMqttPortType(type: String) {
+//        context.dataStore.edit { it[MQTT_PORT_TYPE] = type }
+//    }
+//
+//    //fungsi menyimpan data delay
+//    suspend fun saveDelayResponse(delay : Long) {
+//        context.dataStore.edit { it[DELAY_RESPONSE] = delay }
+//    }
+//
+//    //fungsi menyimpan data threshold
+//    suspend fun saveRpmThreshold(rpm : Int) {
+//        context.dataStore.edit { it[RPM_THRESHOLD] = rpm }
+//    }
+//
+//    suspend fun saveSpeedThreshold(speed : Int) {
+//        context.dataStore.edit { it[SPEED_THRESHOLD] = speed }
+//    }
+//
+//    suspend fun saveThrottleThreshold(throttle : Int) {
+//        context.dataStore.edit { it[THROTTLE_THRESHOLD] = throttle }
+//    }
+//
+//    suspend fun saveTempThreshold(temp : Int) {
+//        context.dataStore.edit { it[TEMP_THRESHOLD] = temp }
+//    }
+//
+//    suspend fun saveMafThreshold(maf : Double) {
+//        context.dataStore.edit { it[MAF_THRESHOLD] = maf }
+//    }
+//
+//    suspend fun saveFuelThreshold(fuel : Int) {
+//        context.dataStore.edit { it[FUEL_THRESHOLD] = fuel }
+//    }
 
 
     //clear data MQTT
