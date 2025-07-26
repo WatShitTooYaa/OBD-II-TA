@@ -14,8 +14,9 @@ android {
 
     defaultConfig {
         applicationId = "com.example.obd_iiservice"
-        minSdk = 24
-        targetSdk = 34
+        minSdk = 21
+        //noinspection ExpiredTargetSdkVersion
+        targetSdk = 21
         versionCode = 1
         versionName = "1.0"
 
@@ -91,5 +92,5 @@ dependencies {
 //    implementation(libs.material.v150)
 //    implementation(libs.org.jetbrains.kotlin.plugin.parcelize.gradle.plugin)
     //UI library
-    implementation(libs.gauge.library.android)
+//    implementation(libs.gauge.library.android)
 }

@@ -19,29 +19,29 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <com.imsalman.gaugelibrary.Gauge
-                android:id="@+id/gauge1"
-                android:layout_width="0dp"
-                android:layout_height="200dp"
-                android:layout_margin="20dp"
-                android:padding="10dp"
-                app:gaugeStartValue="30"
-                app:gaugeEndValue="500"
+<!--            <com.imsalman.gaugelibrary.Gauge-->
+<!--                android:id="@+id/gauge1"-->
+<!--                android:layout_width="0dp"-->
+<!--                android:layout_height="200dp"-->
+<!--                android:layout_margin="20dp"-->
+<!--                android:padding="10dp"-->
+<!--                app:gaugeStartValue="30"-->
+<!--                app:gaugeEndValue="500"-->
 
-                app:gaugePointEndColor="@color/gauge_point_end"
-                app:gaugePointStartColor="@color/green_second"
-                app:gaugeStrokeCap="ROUND"
-                app:gaugeStartAngle="145"
-                app:gaugeStrokeColor="#e8e2e1"
-                app:gaugeStrokeWidth="15dp"
-                app:gaugeSweepAngle="250"
-                app:gaugePointSize="0"
+<!--                app:gaugePointEndColor="@color/gauge_point_end"-->
+<!--                app:gaugePointStartColor="@color/green_second"-->
+<!--                app:gaugeStrokeCap="ROUND"-->
+<!--                app:gaugeStartAngle="145"-->
+<!--                app:gaugeStrokeColor="#e8e2e1"-->
+<!--                app:gaugeStrokeWidth="15dp"-->
+<!--                app:gaugeSweepAngle="250"-->
+<!--                app:gaugePointSize="0"-->
 
-                app:layout_constraintVertical_bias="0.3"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+<!--                app:layout_constraintVertical_bias="0.3"-->
+<!--                app:layout_constraintBottom_toBottomOf="parent"-->
+<!--                app:layout_constraintEnd_toEndOf="parent"-->
+<!--                app:layout_constraintStart_toStartOf="parent"-->
+<!--                app:layout_constraintTop_toTopOf="parent" />-->
 
 <!-- app:gaugeDividerSize="20"
                 app:gaugeDividerStep="100"
@@ -66,8 +66,8 @@
                 android:textColor="@color/hitam_pekat"
                 android:text="3000"
                 android:textSize="20sp"
-                app:layout_constraintEnd_toEndOf="@+id/gauge1"
-                app:layout_constraintStart_toStartOf="@+id/gauge1"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="@+id/guideline2" />
 
             <TextView

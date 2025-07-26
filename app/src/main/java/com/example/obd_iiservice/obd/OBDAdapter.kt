@@ -35,20 +35,20 @@ class OBDAdapter(
             tvItemObdValue.text = item.value
 
 
-            gauge1.apply {
-                // Pastikan tipe data sesuai (toFloat atau toInt)
-                startValue = item.startValue.toInt()
-                endValue = item.endValue.toInt()
-                value = item.value.toInt()
-                when(item.value.toFloat() > item.threshold.toFloat()){
-                    true -> {
-                        pointStartColor = ContextCompat.getColor(context, R.color.gauge_point_end)
-                    }
-                    false -> {
-                        pointStartColor = ContextCompat.getColor(context, R.color.green_second)
-                    }
-                }
-            }
+//            gauge1.apply {
+//                // Pastikan tipe data sesuai (toFloat atau toInt)
+//                startValue = item.startValue.toInt()
+//                endValue = item.endValue.toInt()
+//                value = item.value.toInt()
+//                when(item.value.toFloat() > item.threshold.toFloat()){
+//                    true -> {
+//                        pointStartColor = ContextCompat.getColor(context, R.color.gauge_point_end)
+//                    }
+//                    false -> {
+//                        pointStartColor = ContextCompat.getColor(context, R.color.green_second)
+//                    }
+//                }
+//            }
         }
     }
 
