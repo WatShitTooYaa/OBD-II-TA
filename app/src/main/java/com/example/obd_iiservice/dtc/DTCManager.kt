@@ -181,4 +181,65 @@ class OBDManager (
         }
         return dtcType + hex.substring(1)
     }
+
+    suspend fun sendCommandAndAwaitResponse(
+        output: OutputStream,
+        input: InputStream,
+        command: String,
+        timeoutMs: Long = 3000 // Timeout bisa diperpanjang untuk perintah kompleks
+    ): String = withContext(Dispatchers.IO) {
+
+        // LANGKAH 1: BERSIHKAN BUFFER INPUT SEBELUM MENGIRIM
+        // Beri jeda singkat agar data "terlambat" bisa masuk ke buffer untuk dibersihkan.
+        delay(100)
+//        while (input.available() > 0) {
+//            input.read()
+//        }
+        flushUntilPrompt(input)
+        Log.d("OBD_SYNC", "Input buffer cleared before sending '$command'")
+
+        // LANGKAH 2: KIRIM PERINTAH SATU KALI
+        output.write((command + "\r").toByteArray())
+        output.flush()
+
+        // LANGKAH 3: BACA DAN TUNGGU RESPONS SPESIFIK
+        val responseBuffer = StringBuilder()
+        val startTime = System.currentTimeMillis()
+        val temp = ByteArray(1024)
+
+        while (true) {
+            if (System.currentTimeMillis() - startTime > timeoutMs) {
+                Log.w("OBD_SYNC", "Timeout saat menunggu respons untuk perintah: $command")
+                break
+            }
+            if (input.available() > 0) {
+                val len = input.read(temp)
+                if (len > 0) {
+                    responseBuffer.append(String(temp, 0, len, Charsets.UTF_8))
+                    // Jika prompt ditemukan, respons dianggap selesai
+                    if (responseBuffer.contains('>')) {
+                        break
+                    }
+                }
+            }
+            delay(50) // Jeda singkat agar loop tidak membebani CPU
+        }
+
+        return@withContext responseBuffer.toString().replace(">", "").trim()
+    }
+    suspend fun flushUntilPrompt(input: InputStream, timeoutMs: Long = 1000) {
+        val start = System.currentTimeMillis()
+        val temp = ByteArray(1024)
+
+        while (System.currentTimeMillis() - start < timeoutMs) {
+            if (input.available() > 0) {
+                val len = input.read(temp)
+                val data = String(temp, 0, len)
+                if ('>' in data) break
+            } else {
+                delay(50) // beri waktu sedikit
+            }
+        }
+    }
+
 }

@@ -16,21 +16,21 @@ import javax.inject.Inject
 class DTCViewModel @Inject constructor(
     private val obdRepository: OBDRepository
 ) : ViewModel() {
-    private var _listDTC = MutableStateFlow<List<DTCItem>>(emptyList())
-    val listDTC : StateFlow<List<DTCItem>> = _listDTC.asStateFlow()
+    private var _listDTC = MutableStateFlow<List<String>>(emptyList())
+    val listDTC : StateFlow<List<String>> = _listDTC.asStateFlow()
 
     suspend fun updateOBDJobState(obdJobState: OBDJobState){
         obdRepository.updateOBDJobState(obdJobState)
     }
 
-    fun setDTC(listDTC : List<DTCItem>){
+    fun setDTC(listDTC : List<String>){
         _listDTC.value = listDTC
     }
 
-    fun parseAndSetDTC(rawResponse: String) {
-        val dtcCodes = parseDTCResponse(rawResponse)
-        _listDTC.value = dtcCodes
-    }
+//    fun parseAndSetDTC(rawResponse: String) {
+//        val dtcCodes = parseDTCResponse(rawResponse)
+//        _listDTC.value = dtcCodes
+//    }
 
     private fun parseDTCResponse(response: String): List<DTCItem> {
         val clean = response.replace("\\s".toRegex(), "")

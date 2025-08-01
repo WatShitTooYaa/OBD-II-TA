@@ -68,7 +68,7 @@ interface OBDRepository {
     fun listenForResponses(input: InputStream): Flow<String>
     // Fungsi parsing bisa kita buat public agar bisa diakses dari luar
     fun parseOBDResponse(response: String, context: Context): Map<String, String>
-    fun parseOBDDTCResponse(response: String, context: Context): List<DTCItem>
+    fun parseOBDDTCResponse(response: String, context: Context): List<String>
     suspend fun sendCommand(output: OutputStream, command: String) : Boolean
     // Fungsi untuk service agar bisa mengupdate statusnya
     suspend fun updateServiceState(newState: ServiceState)
@@ -504,9 +504,9 @@ class OBDRepositoryImpl @Inject constructor(
     }
 
     //data dtc
-    override fun parseOBDDTCResponse(response: String, context: Context): List<DTCItem> {
+    override fun parseOBDDTCResponse(response: String, context: Context): List<String> {
         val data = mutableMapOf<String, String>()
-        var listData = mutableListOf<DTCItem>()
+        var listData = mutableListOf<String>()
         // Membersihkan karakter umum dan "SEARCHING..."
         var cleanResponse = response
             .replace("SEARCHING...", "", ignoreCase = true)
@@ -543,21 +543,21 @@ class OBDRepositoryImpl @Inject constructor(
         return listData.toList()
     }
 
-    private fun parseDTCResponse(response: String): List<DTCItem> {
+    private fun parseDTCResponse(response: String): List<String> {
         val clean = response.replace("\\s".toRegex(), "")
         Log.d("OBD", "Raw DTC response: $response")
 
         if (!clean.startsWith("43")) return emptyList()
 
         val hexData = clean.removePrefix("43")
-        val dtcList = mutableListOf<DTCItem>()
+        val dtcList = mutableListOf<String>()
 
         for (i in hexData.indices step 4) {
             if (i + 4 > hexData.length) break
             val code = hexData.substring(i, i + 4)
             if (code == "0000") continue
             val parsedCode = convertHexToDTC(code)
-            dtcList.add(DTCItem(parsedCode, "Deskripsi tidak tersedia"))
+            dtcList.add(parsedCode)
         }
 
         return dtcList

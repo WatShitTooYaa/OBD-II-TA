@@ -98,35 +98,39 @@ class BluetoothViewModel @Inject constructor(
         onError : (String) -> Unit
         ) {
         viewModelScope.launch {
-            try {
-//                bluetoothSocket = repository.connectToDevice(address)
-                updateBluetoothSocket(bluetoothRepository.connectToDevice(address))
-                if (bluetoothSocket.first() != null && bluetoothSocket.value?.isConnected == true) {
-                    onSuccess()
-                } else {
-                    onError("Socket is null or not connected")
-                }
-            } catch (e : IOException) {
-//                bluetoothSocket = null
-                updateBluetoothSocket(null)
-                onError(e.message ?: "connection failed")
-            }
+            bluetoothRepository.connectToDeviceCallback(address, onSuccess, onError)
         }
+//            try {
+////                bluetoothSocket = repository.connectToDevice(address)
+//                updateBluetoothSocket(bluetoothRepository.connectToDevice(address))
+//                if (bluetoothSocket.first() != null && bluetoothSocket.value?.isConnected == true) {
+//                    onSuccess()
+//                } else {
+//                    onError("Socket is null or not connected")
+//                }
+//            } catch (e : IOException) {
+////                bluetoothSocket = null
+//                updateBluetoothSocket(null)
+//                onError(e.message ?: "connection failed")
+//            }
+//        }
     }
 
 
     fun disconnect() {
-        try {
-//            bluetoothSocket?.close()
-            bluetoothSocket.value.takeIf { it?.isConnected == true }?.close()
-        } catch (e: IOException) {
-            Log.e("Bluetooth", "Disconnect failed", e)
-        } finally {
-//            bluetoothSocket = null
-            viewModelScope.launch {
-                updateBluetoothSocket(null)
-            }
-        }
+        bluetoothRepository.disconnect()
+//        try {
+////            bluetoothSocket?.close()
+//            bluetoothSocket.value.takeIf { it?.isConnected == true }?.close()
+//        } catch (e: IOException) {
+//            Log.e("Bluetooth", "Disconnect failed", e)
+//        } finally {
+////            bluetoothSocket = null
+//            viewModelScope.launch {
+////                updateBluetoothSocket(null)
+//                updateBluetoothSocket(null)
+//            }
+//        }
     }
 
     suspend fun changeIsReceiverRegistered(isRegistered : Boolean){
@@ -135,15 +139,7 @@ class BluetoothViewModel @Inject constructor(
     }
 
     suspend fun updateBluetoothSocket(socket: BluetoothSocket?) {
-//        _bluetoothSocket.value = socket
         bluetoothRepository.updateBluetoothSocket(socket)
-//        _isConnected.value = socket?.isConnected == true
-//        _isConnected.value = if (socket != null && socket.isConnected){
-//            true
-//        } else {
-//            false
-//        }
-
     }
 
     fun changeAutoReconnect(isAuto: Boolean){

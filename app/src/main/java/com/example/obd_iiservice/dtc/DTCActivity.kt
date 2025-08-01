@@ -103,21 +103,40 @@ class DTCActivity : AppCompatActivity() {
         val socket = bluetoothRepository.bluetoothSocket.value
         lifecycleScope.launch {
             try {
-//                if (socket == null){
-//                    makeToast(this@DTCActivity, //            Toast.makeText(this, "Perangkat OBD tidak ditemukan", Toast.LENGTH_SHORT).show()
-//                        "Perangkat OBD tidak ditemukan")
-//                    return@launch
-//                }
-//                val obdManager = OBDManager(socket)
+                if (socket == null){
+                    makeToast(this@DTCActivity, //            Toast.makeText(this, "Perangkat OBD tidak ditemukan", Toast.LENGTH_SHORT).show()
+                        "Perangkat OBD tidak ditemukan")
+                    return@launch
+                }
+                val obdManager = OBDManager(socket)
+                val input = socket.inputStream
+                val output = socket.outputStream
 //                val response = obdManager.getDTCs()
 //                saveLogToFile(this@DTCActivity, "DTC response", "res", response)
 //                dtcViewModel.parseAndSetDTC(response)
-                if (socket != null) {
-                    gettingDTC(this@DTCActivity, socket.inputStream, socket.outputStream)
+                obdRepository.updateOBDJobState(OBDJobState.CHECK_ENGINE)
+                delay(300)
+
+                // Inisialisasi (setiap perintah menunggu responsnya sendiri)
+                val initCmds = listOf("ATZ", "ATE0", "ATH0", "ATSP0")
+                for (cmd in initCmds) {
+                    obdManager.sendCommandAndAwaitResponse(output, input, cmd)
+
                 }
+
+                // Minta DTC SATU KALI dan tunggu responsnya
+                val dtcRawResponse = obdManager.sendCommandAndAwaitResponse(output, input, "03")
+
+                // Proses respons yang dijamin benar
+                val dtcList = obdRepository.parseOBDDTCResponse(dtcRawResponse, this@DTCActivity)
+                dtcViewModel.setDTC(dtcList)
+//                if (socket != null) {
+//                    gettingDTC(this@DTCActivity, socket.inputStream, socket.outputStream)
+//                }
             } catch (e: Exception) {
-                e.printStackTrace()
-                e.message?.let { saveLogToFile(this@DTCActivity, "DTC response", "res", it) }
+                Log.e("DTC_Flow", "Error saat proses pengecekan DTC", e)
+            } finally {
+                obdRepository.updateOBDJobState(OBDJobState.FREE)
             }
         }
     }
@@ -128,6 +147,9 @@ class DTCActivity : AppCompatActivity() {
         lifecycleScope.launch {
             launch {
                 obdRepository.updateOBDJobState(OBDJobState.CHECK_ENGINE)
+            }
+            launch {
+                bluetoothRepository.disconnect()
             }
         }
 
@@ -192,4 +214,6 @@ class DTCActivity : AppCompatActivity() {
         }
         return dtcJob
     }
+
+
 }

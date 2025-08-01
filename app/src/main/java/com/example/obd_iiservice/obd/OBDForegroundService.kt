@@ -8,7 +8,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.obd_iiservice.R
 import com.example.obd_iiservice.app.ApplicationScope
 import com.example.obd_iiservice.bluetooth.BluetoothConnectionState
@@ -117,13 +119,13 @@ class OBDForegroundService : Service() {
                         OBDJobState.CHECK_ENGINE -> {
                             readJob?.cancel()
                             mqttJob?.cancel()
-                            Log.d("triple", "obdjobstate:checkengin")
+                            Log.d("obdjobstate", "checkengin")
                         }
                         OBDJobState.FREE -> {
-                            Log.d("triple", "obdjobstate:free beforesocket")
+                            Log.d("obdjobstate", "free beforesocket")
                             if (readJob == null || !readJob!!.isActive) {
                                 if (socket != null) {
-                                    Log.d("triple", "obdjobstate:free")
+                                    Log.d("obdjobstate", "socket not null")
 
                                     //start reading
                                     readJob = startReading(
@@ -179,7 +181,8 @@ class OBDForegroundService : Service() {
 
                                         else -> {}
                                     }
-                                } else {
+                                }
+                                else {
                                     Log.e("OBD", "input atau output null")
                                 }
                             }
@@ -191,7 +194,6 @@ class OBDForegroundService : Service() {
 
                         OBDJobState.ERROR -> {
                             Log.d("triple", "obdjobstate:error")
-
                         }
                     }
                 }
@@ -227,13 +229,83 @@ class OBDForegroundService : Service() {
         startForeground(1, notification)
     }
 
+//    private fun startReading(context: Context, input: InputStream, output: OutputStream): Job? {
+//        readJob?.cancel()
+//
+//        //PID untuk mengambil data seperti speed, rpm, dll
+//        val pidList = listOf("010C", "010D", "0111", "0105", "0110")
+//
+//        readJob = serviceScope.launch {
+//            val responseChannel = Channel<String>(Channel.UNLIMITED)
+//
+//            val initListenerJob = launch {
+//                obdRepository.listenForResponses(input)
+//                    .collect { response ->
+//                        responseChannel.send(response)
+//                    }
+//            }
+//
+//            // inisiasi elm
+//            val initCmds = listOf("ATZ", "ATE0", "ATH1", "ATSP0", "0100")
+//            for (cmd in initCmds) {
+//
+//                obdRepository.sendCommand(output, cmd)
+//                val response = withTimeoutOrNull(2000) { responseChannel.receive() }
+//                Log.d("INIT_RESPONSE", "Cmd: '$cmd' -> Resp: '$response'")
+//
+//                delay(200)
+//            }
+//
+//            initListenerJob.cancel()
+//
+//            val listenerJob = launch {
+//                obdRepository.listenForResponses(input)
+//                    .collect { response ->
+//                        val parsedData = obdRepository.parseOBDResponse(response, context)
+//                        if (parsedData.isNotEmpty()) {
+//                            sendOBDData(parsedData)
+//                        }
+//                    }
+//            }
+//
+//            launch {
+//                obdRepository.updateOBDJobState(OBDJobState.READING)
+//            }
+//
+//            while (isActive) {
+//                for (pid in pidList) {
+////                    if (!isActive) break
+//                    if (!isActive || obdRepository.obdJobState.value != OBDJobState.READING) break
+//                    Log.d("OBD_LOOP", "State: ${obdRepository.obdJobState.value}, pid: $pid")
+//                    val commandSentSuccessfully = obdRepository.sendCommand(output, pid)
+//                    if (!commandSentSuccessfully) {
+//                        this.cancel()
+//                        break
+//                    }
+//                    delay(100)
+//                }
+//            }
+//            launch {
+//                obdRepository.updateOBDJobState(OBDJobState.FREE)
+//            }
+//            listenerJob.cancel()
+//        }
+//        return readJob
+//    }
+
+    // Ganti fungsi startReading Anda yang lama dengan yang ini
     private fun startReading(context: Context, input: InputStream, output: OutputStream): Job? {
         readJob?.cancel()
-
-        //PID untuk mengambil data seperti speed, rpm, dll
         val pidList = listOf("010C", "010D", "0111", "0105", "0110")
 
         readJob = serviceScope.launch {
+            // --- Tahap Inisialisasi Sinkron ---
+            // (Anda bisa meletakkan kode inisialisasi di sini jika perlu,
+            // menggunakan sendCommandAndAwaitResponse agar terjamin)
+            launch {
+                obdRepository.updateOBDJobState(OBDJobState.READING)
+            }
+
             val responseChannel = Channel<String>(Channel.UNLIMITED)
 
             val initListenerJob = launch {
@@ -256,89 +328,72 @@ class OBDForegroundService : Service() {
 
             initListenerJob.cancel()
 
-            val listenerJob = launch {
-                obdRepository.listenForResponses(input)
-                    .collect { response ->
+
+
+            // --- Loop Pembacaan Data yang BARU dan SINKRON ---
+            while (isActive) {
+                for (pid in pidList) {
+                    if (!isActive) break // Cek pembatalan sebelum setiap aksi
+
+                    // 1. KIRIM perintah dan TUNGGU responsnya dalam satu panggilan
+                    val response = sendCommandAndAwaitResponse(output, input, pid)
+
+                    // 2. PROSES respons yang sekarang dijamin milik perintah 'pid'
+                    if (response.isNotEmpty()) {
                         val parsedData = obdRepository.parseOBDResponse(response, context)
                         if (parsedData.isNotEmpty()) {
                             sendOBDData(parsedData)
                         }
                     }
-            }
 
-            launch {
-                obdRepository.updateOBDJobState(OBDJobState.READING)
-            }
-
-            while (isActive) {
-                for (pid in pidList) {
-                    if (!isActive) break
-                    val commandSentSuccessfully = obdRepository.sendCommand(output, pid)
-                    if (!commandSentSuccessfully) {
-                        this.cancel()
-                        break
-                    }
-                    delay(100)
+                    // Jeda singkat antar PID, loop akan secara alami berhenti
+                    // selama menunggu respons di atas.
+                    delay(50)
                 }
             }
+
+            // Cleanup
             launch {
                 obdRepository.updateOBDJobState(OBDJobState.FREE)
             }
-            listenerJob.cancel()
         }
         return readJob
     }
 
+    private suspend fun sendCommandAndAwaitResponse(
+        output: OutputStream,
+        input: InputStream,
+        command: String,
+        timeoutMs: Long = 2000
+    ): String = withContext(Dispatchers.IO) {
+        // 1. Bersihkan buffer input dari data sisa/lama sebelum mengirim
+        delay(50) // Beri waktu sangat singkat agar sisa data terakhir sempat masuk buffer
+        while (input.available() > 0) {
+            input.read()
+        }
 
+        // 2. Kirim perintah SATU KALI
+        output.write((command + "\r").toByteArray())
+        output.flush()
 
-//    private suspend fun sendCommandAndAwaitResponse(
-//        output: OutputStream,
-//        input: InputStream,
-//        command: String,
-//        timeoutMs: Long = 2000
-//    ): String = withContext(Dispatchers.IO) {
-//        // 1. Bersihkan buffer input dari data sisa/lama sebelum mengirim perintah baru
-//        while (input.available() > 0) {
-//            input.read()
-//        }
-//
-//        // 2. Kirim perintah
-//        output.write((command + "\r").toByteArray())
-//        output.flush()
-//
-//        // 3. Baca respons sampai menemukan prompt '>' atau timeout
-//        val responseBuffer = StringBuilder()
-//        val startTime = System.currentTimeMillis()
-//        val temp = ByteArray(1024)
-//
-//        while (true) {
-//            // Cek timeout
-//            if (System.currentTimeMillis() - startTime > timeoutMs) {
-//                Log.w("OBD_SYNC_READ", "Timeout saat menunggu respons untuk perintah: $command")
-//                break
-//            }
-//
-//            if (input.available() > 0) {
-//                val len = input.read(temp)
-//                if (len > 0) {
-//                    responseBuffer.append(String(temp, 0, len, Charsets.UTF_8))
-//                    // Jika prompt ditemukan, kita anggap respons selesai
-//                    if (responseBuffer.contains('>')) {
-//                        break
-//                    }
-//                }
-//            }
-//            // Beri sedikit jeda agar tidak membebani CPU
-//            delay(50)
-//        }
-//
-//        // 4. Bersihkan dan kembalikan respons
-//        return@withContext responseBuffer.toString()
-//            .replace(">", "")
-//            .replace("\r", " ")
-//            .replace("\n", " ")
-//            .trim()
-//    }
+        // 3. Baca dan tunggu respons SPESIFIK untuk perintah ini
+        val responseBuffer = StringBuilder()
+        val startTime = System.currentTimeMillis()
+        val temp = ByteArray(1024)
+        while (true) {
+            if (System.currentTimeMillis() - startTime > timeoutMs) break
+            if (input.available() > 0) {
+                val len = input.read(temp)
+                if (len > 0) {
+                    responseBuffer.append(String(temp, 0, len, Charsets.UTF_8))
+                    if (responseBuffer.contains('>')) break
+                }
+            }
+            delay(50)
+        }
+        return@withContext responseBuffer.toString().replace(">", "").trim()
+    }
+
 
     private fun sendOBDData(data : Map<String, String>) {
         serviceScope.launch {

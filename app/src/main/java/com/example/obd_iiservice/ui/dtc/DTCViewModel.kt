@@ -17,19 +17,23 @@ class DTCViewModel @Inject constructor(
     private val obdRepository: OBDRepository,
     private val bluetoothRepository: BluetoothRepository
 ) : ViewModel() {
-    private var _listDTC = MutableStateFlow<List<DTCItem>>(emptyList())
-    val listDTC : StateFlow<List<DTCItem>> = _listDTC.asStateFlow()
+    private var _listDTC = MutableStateFlow<List<String>>(emptyList())
+    val listDTC : StateFlow<List<String>> = _listDTC.asStateFlow()
 
     val socket = bluetoothRepository.bluetoothSocket
+
+    fun setDTC(listDTC : List<String>){
+        _listDTC.value = listDTC
+    }
 
     suspend fun updateOBDJobState(obdJobState: OBDJobState){
         obdRepository.updateOBDJobState(obdJobState)
     }
 
-    fun parseAndSetDTC(rawResponse: String) {
-        val dtcCodes = parseDTCResponse(rawResponse)
-        _listDTC.value = dtcCodes
-    }
+//    fun parseAndSetDTC(rawResponse: String) {
+//        val dtcCodes = parseDTCResponse(rawResponse)
+//        _listDTC.value = dtcCodes
+//    }
 
     private fun parseDTCResponse(response: String): List<DTCItem> {
         val clean = response.replace("\\s".toRegex(), "")

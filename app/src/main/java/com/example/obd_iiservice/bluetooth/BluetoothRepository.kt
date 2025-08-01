@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
 import android.util.Log
+import androidx.lifecycle.viewModelScope
 import com.example.obd_iiservice.app.ApplicationScope
 import com.example.obd_iiservice.helper.PreferenceManager
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -21,12 +23,14 @@ import java.util.UUID
 import javax.inject.Inject
 
 interface BluetoothRepository {
-    suspend fun connectToDevice(address: String): BluetoothSocket?
+//    suspend fun connectToDevice(address: String): BluetoothSocket?
     suspend fun updateBluetoothSocket(socket: BluetoothSocket?)
     suspend fun updateConnectionState(state: BluetoothConnectionState)
     suspend fun checkDataForConnecting() : Boolean
     suspend fun saveBluetoothAddress(address: String?)
     suspend fun updateReconnectingJob(job: Job?)
+    fun connectToDeviceCallback(address: String, onSuccess: () -> Unit, onError: (String) -> Unit)
+    fun disconnect()
     val bluetoothSocket: StateFlow<BluetoothSocket?>
     val connectionState : StateFlow<BluetoothConnectionState>
     val bluetoothAddress: StateFlow<String?>
@@ -53,7 +57,7 @@ class BluetoothRepositoryImpl @Inject constructor(
     override val reconnectingJob : StateFlow<Job?> = _reconnectingJob.asStateFlow()
 
     @SuppressLint("MissingPermission")
-    override suspend fun connectToDevice(address: String): BluetoothSocket? {
+    private suspend fun connectToDevice(address: String): BluetoothSocket? {
         val device = bluetoothAdapter.getRemoteDevice(address)
         //uuid standart untuk spp elm327
         val uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
@@ -70,6 +74,48 @@ class BluetoothRepositoryImpl @Inject constructor(
                 Log.e("Bluetooth", "Socket connection failed: ${e.message}")
                 socket.close()
                 return@withContext null
+            }
+        }
+    }
+
+    override fun connectToDeviceCallback(
+        address: String,
+        onSuccess : () -> Unit,
+        onError : (String) -> Unit
+    ) {
+        applicationScope.launch {
+            try {
+//                bluetoothSocket = repository.connectToDevice(address)
+                updateBluetoothSocket(connectToDevice(address))
+                if (bluetoothSocket.first() != null && bluetoothSocket.value?.isConnected == true) {
+                    onSuccess()
+                } else {
+                    onError("Socket is null or not connected")
+                }
+            } catch (e : IOException) {
+//                bluetoothSocket = null
+                onError(e.message ?: "connection failed")
+                updateBluetoothSocket(null)
+            }
+        }
+    }
+
+    override fun disconnect() {
+        try {
+//            bluetoothSocket?.close()
+            bluetoothSocket.value.takeIf { it?.isConnected == true }?.close()
+        } catch (e: IOException) {
+            Log.e("Bluetooth", "Disconnect failed", e)
+        } finally {
+//            bluetoothSocket = null
+            applicationScope.launch {
+//                updateBluetoothSocket(null)
+                launch {
+                    updateConnectionState(BluetoothConnectionState.IDLE)
+                }
+                launch {
+                    updateBluetoothSocket(null)
+                }
             }
         }
     }

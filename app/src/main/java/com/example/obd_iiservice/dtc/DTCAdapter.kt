@@ -21,7 +21,7 @@ class DTCAdapter(
         return ListViewHolder(binding)
     }
 
-    private var listDTCItem : List<DTCItem> = emptyList()
+    private var listDTCItem : List<String> = emptyList()
 
 //    init {
 //        CoroutineScope(Dispatchers.Main).launch {
@@ -31,7 +31,7 @@ class DTCAdapter(
 //            }
 //        }
 //    }
-    fun submitList(newList: List<DTCItem>) {
+    fun submitList(newList: List<String>) {
         listDTCItem = newList
         notifyDataSetChanged()
     }
@@ -41,9 +41,9 @@ class DTCAdapter(
         holder: ListViewHolder,
         position: Int
     ) {
-        val (dtcCode, dtcDescription) = listDTCItem[position]
+        val dtcCode = listDTCItem[position]
         holder.binding.tvDtcCode.text = dtcCode
-        holder.binding.tvDtcDesc.text = dtcDescription
+//        holder.binding.tvDtcDesc.text = dtcDescription
     }
 
     override fun getItemCount(): Int {

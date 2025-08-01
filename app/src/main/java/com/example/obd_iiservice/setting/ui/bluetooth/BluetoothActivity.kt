@@ -22,6 +22,7 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -42,11 +43,13 @@ import com.example.obd_iiservice.helper.saveLogToFile
 import com.example.obd_iiservice.obd.OBDForegroundService
 import com.example.obd_iiservice.obd.ServiceState
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -67,6 +70,7 @@ class BluetoothActivity : AppCompatActivity() {
 
     private lateinit var INTENT_SERVICE_STATE : Intent
 
+    @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -169,6 +173,7 @@ class BluetoothActivity : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
     private fun initUI() {
         rvBluetooth = binding.rvListDevices
         rvBluetooth.setHasFixedSize(true)
@@ -327,6 +332,7 @@ class BluetoothActivity : AppCompatActivity() {
         rvBluetooth.adapter = bluetoothDeviceAdapter
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
     private fun checkAndRequestPermissions() {
         //check gps hidup atau tidak
         val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
@@ -439,8 +445,10 @@ class BluetoothActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     bluetoothViewModel.saveBluetoothAddress(address)
                     bluetoothViewModel.updateConnectionState(BluetoothConnectionState.CONNECTED)
+                    withContext(Dispatchers.Main){
+                        Toast.makeText(applicationContext, "Connected to ${device?.name} in ${durationInMillis}ms", Toast.LENGTH_SHORT).show()
+                    }
                 }
-                Toast.makeText(this, "Connected to ${device?.name} in ${durationInMillis}ms", Toast.LENGTH_SHORT).show()
                 saveLogToFile(this, "Connect Bluetooth", "OK", "Connected to ${device?.name}. Duration: ${durationInMillis}ms")
                 startAndBindOBDService()
             },
